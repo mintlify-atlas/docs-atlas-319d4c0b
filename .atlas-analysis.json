@@ -1,0 +1,140 @@
+{
+  "projectType": "cli-tool",
+  "projectName": "git-cliff",
+  "projectDescription": "A highly customizable changelog generator that follows Conventional Commit specifications",
+  "theme": "aspen",
+  "primaryColor": "#C96329",
+  "lightColor": "#BEC5C9",
+  "darkColor": "#1C2C2E",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "quickstart"
+            ]
+          },
+          {
+            "group": "Installation",
+            "pages": [
+              "installation/overview",
+              "installation/cargo",
+              "installation/binary",
+              "installation/npm",
+              "installation/pypi",
+              "installation/pacman",
+              "installation/docker",
+              "installation/homebrew",
+              "installation/nix"
+            ]
+          },
+          {
+            "group": "Usage",
+            "pages": [
+              "usage/overview",
+              "usage/basic-usage",
+              "usage/args",
+              "usage/bump-version",
+              "usage/monorepos",
+              "usage/submodules"
+            ]
+          },
+          {
+            "group": "Configuration",
+            "pages": [
+              "configuration/overview",
+              "configuration/changelog",
+              "configuration/git",
+              "configuration/remote",
+              "configuration/bump"
+            ]
+          },
+          {
+            "group": "Templating",
+            "pages": [
+              "templating/overview",
+              "templating/syntax",
+              "templating/context",
+              "templating/examples"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Integrations",
+        "groups": [
+          {
+            "group": "Git Platforms",
+            "pages": [
+              "integrations/github",
+              "integrations/gitlab",
+              "integrations/gitea",
+              "integrations/bitbucket",
+              "integrations/azure-devops"
+            ]
+          },
+          {
+            "group": "CI/CD",
+            "pages": [
+              "integrations/github-actions",
+              "integrations/docker"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Advanced",
+        "groups": [
+          {
+            "group": "Advanced Usage",
+            "pages": [
+              "advanced/tips-and-tricks",
+              "advanced/jujutsu",
+              "advanced/context-loading"
+            ]
+          },
+          {
+            "group": "Development",
+            "pages": [
+              "development/architecture",
+              "development/contributing"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Generate changelogs from Git history",
+    "Conventional Commits support",
+    "Custom regex-based commit parsers",
+    "Highly customizable Tera templates",
+    "Automatic semantic versioning",
+    "GitHub/GitLab/Gitea/Bitbucket/Azure DevOps integration",
+    "Monorepo support",
+    "Multiple output formats"
+  ],
+  "publicApiSurface": [
+    "git-cliff --init",
+    "git-cliff -o CHANGELOG.md",
+    "git-cliff --tag <version>",
+    "git-cliff --bump",
+    "git-cliff --range <range>",
+    "git-cliff --config <path>",
+    "git-cliff --workdir <path>",
+    "git-cliff --repository <path>",
+    "git-cliff --include-path <pattern>",
+    "git-cliff --exclude-path <pattern>",
+    "git-cliff --with-commit <msg>",
+    "git-cliff --prepend <file>",
+    "git-cliff --context",
+    "git-cliff-core::Changelog",
+    "git-cliff-core::Config",
+    "git-cliff-core::Commit",
+    "git-cliff-core::Release"
+  ]
+}
