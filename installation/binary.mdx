@@ -1,0 +1,272 @@
+---
+title: Install from Binary
+description: Download and install pre-compiled git-cliff binaries
+---
+
+# Install from Binary
+
+Download pre-compiled binaries for the fastest installation with no dependencies.
+
+## Quick Install
+
+<Tabs>
+  <Tab title="Linux">
+    Download and install the latest binary:
+    
+    ```bash
+    # Set version (or use 'latest')
+    VERSION="2.7.0"
+    
+    # Download (choose glibc or musl)
+    wget "https://github.com/orhun/git-cliff/releases/download/v${VERSION}/git-cliff-${VERSION}-x86_64-unknown-linux-gnu.tar.gz"
+    
+    # Extract
+    tar -xvzf git-cliff-*.tar.gz
+    
+    # Install
+    sudo mv git-cliff-${VERSION}/git-cliff /usr/local/bin/
+    
+    # Verify
+    git-cliff --version
+    ```
+  </Tab>
+  
+  <Tab title="macOS">
+    Download and install for macOS:
+    
+    ```bash
+    # Set version
+    VERSION="2.7.0"
+    
+    # Download (Apple Silicon)
+    wget "https://github.com/orhun/git-cliff/releases/download/v${VERSION}/git-cliff-${VERSION}-aarch64-apple-darwin.tar.gz"
+    
+    # Or for Intel Macs
+    # wget "https://github.com/orhun/git-cliff/releases/download/v${VERSION}/git-cliff-${VERSION}-x86_64-apple-darwin.tar.gz"
+    
+    # Extract
+    tar -xvzf git-cliff-*.tar.gz
+    
+    # Install
+    sudo mv git-cliff-${VERSION}/git-cliff /usr/local/bin/
+    
+    # Verify
+    git-cliff --version
+    ```
+  </Tab>
+  
+  <Tab title="Windows">
+    Download and install on Windows:
+    
+    ```powershell
+    # Set version
+    $VERSION = "2.7.0"
+    
+    # Download
+    Invoke-WebRequest -Uri "https://github.com/orhun/git-cliff/releases/download/v$VERSION/git-cliff-$VERSION-x86_64-pc-windows-msvc.zip" -OutFile "git-cliff.zip"
+    
+    # Extract
+    Expand-Archive -Path git-cliff.zip -DestinationPath .
+    
+    # Move to a directory in your PATH
+    Move-Item .\git-cliff-$VERSION\git-cliff.exe C:\Windows\System32\
+    
+    # Verify
+    git-cliff --version
+    ```
+  </Tab>
+</Tabs>
+
+## Detailed Installation Steps
+
+<Steps>
+  <Step title="Choose your platform">
+    Download the appropriate binary from the [releases page](https://github.com/orhun/git-cliff/releases):
+    
+    **Linux:**
+    - `x86_64-unknown-linux-gnu.tar.gz` (glibc-based systems like Ubuntu, Debian, Fedora)
+    - `x86_64-unknown-linux-musl.tar.gz` (musl-based systems like Alpine Linux)
+    - `aarch64-unknown-linux-gnu.tar.gz` (ARM64 Linux)
+    
+    **macOS:**
+    - `x86_64-apple-darwin.tar.gz` (Intel Macs)
+    - `aarch64-apple-darwin.tar.gz` (Apple Silicon M1/M2/M3)
+    
+    **Windows:**
+    - `x86_64-pc-windows-msvc.zip` (64-bit Windows)
+  </Step>
+  
+  <Step title="Download the binary">
+    <CodeGroup>
+      ```bash Linux (glibc)
+      VERSION="2.7.0"
+      wget "https://github.com/orhun/git-cliff/releases/download/v${VERSION}/git-cliff-${VERSION}-x86_64-unknown-linux-gnu.tar.gz"
+      ```
+      
+      ```bash Linux (musl)
+      VERSION="2.7.0"
+      wget "https://github.com/orhun/git-cliff/releases/download/v${VERSION}/git-cliff-${VERSION}-x86_64-unknown-linux-musl.tar.gz"
+      ```
+      
+      ```bash macOS (Apple Silicon)
+      VERSION="2.7.0"
+      curl -LO "https://github.com/orhun/git-cliff/releases/download/v${VERSION}/git-cliff-${VERSION}-aarch64-apple-darwin.tar.gz"
+      ```
+      
+      ```bash macOS (Intel)
+      VERSION="2.7.0"
+      curl -LO "https://github.com/orhun/git-cliff/releases/download/v${VERSION}/git-cliff-${VERSION}-x86_64-apple-darwin.tar.gz"
+      ```
+    </CodeGroup>
+  </Step>
+  
+  <Step title="Extract the archive">
+    ```bash
+    tar -xvzf git-cliff-*.tar.gz
+    cd git-cliff-${VERSION}
+    ```
+    
+    The archive contains:
+    - `git-cliff` - The binary executable
+    - `README.md` - Documentation
+    - `LICENSE-*` - License files
+  </Step>
+  
+  <Step title="Install the binary">
+    Move the binary to a directory in your PATH:
+    
+    ```bash
+    # System-wide installation (requires sudo)
+    sudo mv git-cliff /usr/local/bin/
+    
+    # Or user-local installation
+    mkdir -p ~/.local/bin
+    mv git-cliff ~/.local/bin/
+    ```
+    
+    <Note>
+      Ensure `~/.local/bin` is in your PATH if using user-local installation.
+    </Note>
+  </Step>
+  
+  <Step title="Verify installation">
+    ```bash
+    git-cliff --version
+    ```
+    
+    Expected output:
+    ```
+    git-cliff 2.7.0
+    ```
+  </Step>
+</Steps>
+
+## Signature Verification
+
+<Note>
+  Release tarballs are signed with PGP key: `1D2D410A741137EBC544826F4A92FA17B6619297`
+</Note>
+
+<Steps>
+  <Step title="Import the signing key">
+    ```bash
+    gpg --keyserver keyserver.ubuntu.com --recv-keys 4A92FA17B6619297
+    ```
+  </Step>
+  
+  <Step title="Download the signature file">
+    ```bash
+    VERSION="2.7.0"
+    wget "https://github.com/orhun/git-cliff/releases/download/v${VERSION}/git-cliff-${VERSION}-x86_64-unknown-linux-gnu.tar.gz.sig"
+    ```
+  </Step>
+  
+  <Step title="Verify the signature">
+    ```bash
+    gpg --verify git-cliff-*.tar.gz.sig git-cliff-*.tar.gz
+    ```
+    
+    Look for "Good signature" in the output.
+  </Step>
+</Steps>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Permission denied when running git-cliff">
+    Make the binary executable:
+    
+    ```bash
+    chmod +x /path/to/git-cliff
+    ```
+  </Accordion>
+  
+  <Accordion title="Binary not found after installation">
+    Ensure the installation directory is in your PATH:
+    
+    ```bash
+    echo $PATH
+    ```
+    
+    Add to PATH if needed:
+    ```bash
+    export PATH="$HOME/.local/bin:$PATH"
+    ```
+    
+    Make it permanent by adding to `~/.bashrc` or `~/.zshrc`.
+  </Accordion>
+  
+  <Accordion title="GLIBC version error on Linux">
+    If you see errors about GLIBC version, try the musl binary:
+    
+    ```bash
+    wget "https://github.com/orhun/git-cliff/releases/download/v${VERSION}/git-cliff-${VERSION}-x86_64-unknown-linux-musl.tar.gz"
+    ```
+    
+    The musl binary is statically linked and works on older Linux distributions.
+  </Accordion>
+  
+  <Accordion title="macOS blocks the binary (Apple Silicon)">
+    If macOS blocks the binary due to security settings:
+    
+    ```bash
+    xattr -d com.apple.quarantine /usr/local/bin/git-cliff
+    ```
+    
+    Or go to System Preferences → Security & Privacy and allow the app.
+  </Accordion>
+  
+  <Accordion title="Windows Defender blocks the binary">
+    Windows Defender may flag the binary. This is a false positive. You can:
+    
+    1. Add an exception in Windows Defender
+    2. Download from the official GitHub releases page
+    3. Verify the binary's hash from the releases page
+  </Accordion>
+</AccordionGroup>
+
+## Updating
+
+To update, simply download the latest version and replace the old binary:
+
+```bash
+# Download new version
+VERSION="2.8.0"  # Update to latest
+wget "https://github.com/orhun/git-cliff/releases/download/v${VERSION}/git-cliff-${VERSION}-x86_64-unknown-linux-gnu.tar.gz"
+
+# Extract and replace
+tar -xvzf git-cliff-*.tar.gz
+sudo mv git-cliff-${VERSION}/git-cliff /usr/local/bin/
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Configuration" icon="gear" href="/configuration/overview">
+    Set up git-cliff for your project
+  </Card>
+  
+  <Card title="Usage Examples" icon="book" href="/usage/basic-usage">
+    Learn how to use git-cliff
+  </Card>
+</CardGroup>

@@ -1,0 +1,398 @@
+---
+title: Remote Configuration
+description: Configure integration with GitHub, GitLab, Gitea, Bitbucket, and Azure DevOps
+---
+
+The `[remote]` section configures integration with Git hosting platforms to enhance changelogs with pull request data, contributor information, and more.
+
+## Supported Platforms
+
+git-cliff supports integration with:
+
+- GitHub
+- GitLab
+- Gitea / Forgejo
+- Bitbucket
+- Azure DevOps
+
+## GitHub Configuration
+
+<ParamField path="remote.github.owner" type="string" required>
+  Owner (username or organization) of the GitHub repository.
+  
+  **Example:**
+  ```toml
+  [remote.github]
+  owner = "orhun"
+  ```
+</ParamField>
+
+<ParamField path="remote.github.repo" type="string" required>
+  Name of the GitHub repository.
+  
+  Can be overridden with `--github-repo` argument or `GITHUB_REPO` environment variable.
+  
+  **Example:**
+  ```toml
+  [remote.github]
+  owner = "orhun"
+  repo = "git-cliff"
+  ```
+  
+  Or via command line:
+  ```bash
+  git cliff --github-repo orhun/git-cliff
+  ```
+</ParamField>
+
+<ParamField path="remote.github.token" type="string" optional>
+  GitHub personal access token for authentication.
+  
+  Can be overridden with `--github-token` argument or `GITHUB_TOKEN` environment variable.
+  
+  **Example:**
+  ```toml
+  [remote.github]
+  owner = "orhun"
+  repo = "git-cliff"
+  token = "ghp_your_token_here"
+  ```
+  
+  Or via environment variable:
+  ```bash
+  export GITHUB_TOKEN="ghp_your_token_here"
+  git cliff
+  ```
+</ParamField>
+
+<ParamField path="remote.github.api_url" type="string" optional>
+  Custom GitHub API URL for GitHub Enterprise instances.
+  
+  **Example:**
+  ```toml
+  [remote.github]
+  owner = "myorg"
+  repo = "myrepo"
+  api_url = "https://github.company.com/api/v3"
+  token = "ghp_token"
+  ```
+</ParamField>
+
+<ParamField path="remote.github.native_tls" type="boolean" optional>
+  Use platform's native certificate store instead of bundled certificates.
+  
+  Useful for corporate environments with custom CA certificates.
+  
+  **Example:**
+  ```toml
+  [remote.github]
+  owner = "orhun"
+  repo = "git-cliff"
+  native_tls = true
+  ```
+</ParamField>
+
+### GitHub Example
+
+```toml
+[remote.github]
+owner = "orhun"
+repo = "git-cliff"
+token = "ghp_your_personal_access_token"
+```
+
+See [GitHub integration documentation](/integrations/github) for more details.
+
+## GitLab Configuration
+
+<ParamField path="remote.gitlab.owner" type="string" required>
+  Owner (username or group) of the GitLab repository.
+</ParamField>
+
+<ParamField path="remote.gitlab.repo" type="string" required>
+  Name of the GitLab repository.
+  
+  Can be overridden with `--gitlab-repo` argument or `GITLAB_REPO` environment variable.
+</ParamField>
+
+<ParamField path="remote.gitlab.token" type="string" optional>
+  GitLab personal access token.
+  
+  Can be overridden with `--gitlab-token` argument or `GITLAB_TOKEN` environment variable.
+</ParamField>
+
+<ParamField path="remote.gitlab.api_url" type="string" optional>
+  Custom GitLab API URL for self-hosted instances.
+  
+  **Example:**
+  ```toml
+  [remote.gitlab]
+  owner = "archlinux"
+  repo = "arch-repro-status"
+  api_url = "https://gitlab.archlinux.org/api/v4"
+  token = "glpat-your_token"
+  ```
+</ParamField>
+
+<ParamField path="remote.gitlab.native_tls" type="boolean" optional>
+  Use platform's native certificate store.
+</ParamField>
+
+### GitLab Example
+
+```toml
+[remote.gitlab]
+owner = "archlinux"
+repo = "arch-repro-status"
+api_url = "https://gitlab.archlinux.org/api/v4"
+token = "glpat_your_personal_access_token"
+native_tls = false
+```
+
+See [GitLab integration documentation](/integrations/gitlab) for more details.
+
+## Gitea / Forgejo Configuration
+
+<ParamField path="remote.gitea.owner" type="string" required>
+  Owner of the Gitea/Forgejo repository.
+</ParamField>
+
+<ParamField path="remote.gitea.repo" type="string" required>
+  Name of the Gitea/Forgejo repository.
+  
+  Can be overridden with `--gitea-repo` argument or `GITEA_REPO` environment variable.
+</ParamField>
+
+<ParamField path="remote.gitea.token" type="string" optional>
+  Gitea/Forgejo access token.
+  
+  Can be overridden with `--gitea-token` argument or `GITEA_TOKEN` environment variable.
+</ParamField>
+
+<ParamField path="remote.gitea.api_url" type="string" optional>
+  Gitea/Forgejo API URL (required for self-hosted instances).
+  
+  **Example:**
+  ```toml
+  [remote.gitea]
+  owner = "myorg"
+  repo = "myproject"
+  api_url = "https://gitea.company.com/api/v1"
+  token = "your_gitea_token"
+  ```
+</ParamField>
+
+<ParamField path="remote.gitea.native_tls" type="boolean" optional>
+  Use platform's native certificate store.
+</ParamField>
+
+### Gitea Example
+
+```toml
+[remote.gitea]
+owner = "gitea"
+repo = "tea"
+api_url = "https://gitea.com/api/v1"
+token = "your_gitea_access_token"
+```
+
+See [Gitea integration documentation](/integrations/gitea) for more details.
+
+## Bitbucket Configuration
+
+<ParamField path="remote.bitbucket.owner" type="string" required>
+  Owner (username or workspace) of the Bitbucket repository.
+</ParamField>
+
+<ParamField path="remote.bitbucket.repo" type="string" required>
+  Name of the Bitbucket repository.
+  
+  Can be overridden with `--bitbucket-repo` argument or `BITBUCKET_REPO` environment variable.
+</ParamField>
+
+<ParamField path="remote.bitbucket.token" type="string" optional>
+  Bitbucket app password or access token.
+  
+  Can be overridden with `--bitbucket-token` argument or `BITBUCKET_TOKEN` environment variable.
+</ParamField>
+
+<ParamField path="remote.bitbucket.api_url" type="string" optional>
+  Custom Bitbucket API URL for Bitbucket Server instances.
+</ParamField>
+
+<ParamField path="remote.bitbucket.native_tls" type="boolean" optional>
+  Use platform's native certificate store.
+</ParamField>
+
+### Bitbucket Example
+
+```toml
+[remote.bitbucket]
+owner = "myworkspace"
+repo = "myrepo"
+token = "your_app_password"
+```
+
+See [Bitbucket integration documentation](/integrations/bitbucket) for more details.
+
+## Azure DevOps Configuration
+
+<ParamField path="remote.azure_devops.owner" type="string" required>
+  Organization name in Azure DevOps.
+</ParamField>
+
+<ParamField path="remote.azure_devops.repo" type="string" required>
+  Name of the Azure DevOps repository.
+  
+  Can be overridden with `--azure-devops-repo` argument or `AZURE_DEVOPS_REPO` environment variable.
+</ParamField>
+
+<ParamField path="remote.azure_devops.token" type="string" optional>
+  Azure DevOps personal access token.
+  
+  Can be overridden with `--azure-devops-token` argument or `AZURE_DEVOPS_TOKEN` environment variable.
+</ParamField>
+
+<ParamField path="remote.azure_devops.api_url" type="string" optional>
+  Custom Azure DevOps API URL.
+</ParamField>
+
+<ParamField path="remote.azure_devops.native_tls" type="boolean" optional>
+  Use platform's native certificate store.
+</ParamField>
+
+### Azure DevOps Example
+
+```toml
+[remote.azure_devops]
+owner = "myorganization"
+repo = "myproject"
+token = "your_personal_access_token"
+```
+
+## Offline Mode
+
+<ParamField path="offline" type="boolean" default="false">
+  Disable all external API calls even when a remote is configured.
+  
+  Useful when running `--bumped-version` or in restricted network environments.
+  
+  **Example:**
+  ```toml
+  [remote]
+  offline = true
+  
+  [remote.github]
+  owner = "orhun"
+  repo = "git-cliff"
+  ```
+  
+  Or via command line:
+  ```bash
+  git cliff --offline
+  ```
+</ParamField>
+
+## Authentication
+
+### Creating Access Tokens
+
+**GitHub:**
+1. Go to Settings → Developer settings → Personal access tokens
+2. Generate new token with `repo` scope
+3. Use the token in your configuration or as `GITHUB_TOKEN`
+
+**GitLab:**
+1. Go to User Settings → Access Tokens
+2. Create token with `api` scope
+3. Use the token in your configuration or as `GITLAB_TOKEN`
+
+**Gitea:**
+1. Go to Settings → Applications → Generate New Token
+2. Create token with appropriate permissions
+3. Use the token in your configuration or as `GITEA_TOKEN`
+
+**Bitbucket:**
+1. Go to Personal settings → App passwords
+2. Create app password with repository permissions
+3. Use the password in your configuration or as `BITBUCKET_TOKEN`
+
+**Azure DevOps:**
+1. Go to User settings → Personal access tokens
+2. Create new token with Code (Read) permission
+3. Use the token in your configuration or as `AZURE_DEVOPS_TOKEN`
+
+### Security Best Practices
+
+<Warning>
+Never commit tokens to version control. Use environment variables or secure secret management.
+</Warning>
+
+**Recommended approach:**
+
+```toml
+# cliff.toml
+[remote.github]
+owner = "orhun"
+repo = "git-cliff"
+# token is read from GITHUB_TOKEN environment variable
+```
+
+```bash
+# Set environment variable
+export GITHUB_TOKEN="ghp_your_token"
+git cliff
+```
+
+## Template Integration
+
+When remote integration is enabled, additional data is available in changelog templates:
+
+```toml
+[remote.github]
+owner = "orhun"
+repo = "git-cliff"
+
+[changelog]
+body = """
+{% for commit in commits %}
+  * {{ commit.message }}
+    {%- if commit.remote.pr_number %} ([#{{ commit.remote.pr_number }}](https://github.com/{{ remote.github.owner }}/{{ remote.github.repo }}/pull/{{ commit.remote.pr_number }})){%- endif %}
+    {%- if commit.remote.username %} by @{{ commit.remote.username }}{%- endif %}
+{% endfor %}
+
+{% if github.contributors | filter(attribute="is_first_time", value=true) | length != 0 %}
+  ## New Contributors
+  {% for contributor in github.contributors | filter(attribute="is_first_time", value=true) %}
+    * @{{ contributor.username }} made their first contribution
+  {% endfor %}
+{% endif %}
+"""
+```
+
+Available remote data:
+- `commit.remote.pr_number` - Pull request number
+- `commit.remote.pr_title` - Pull request title
+- `commit.remote.username` - Commit author username
+- `github.contributors` - List of contributors with metadata
+
+## Complete Example
+
+```toml
+[remote]
+offline = false
+
+[remote.github]
+owner = "orhun"
+repo = "git-cliff"
+# Token read from GITHUB_TOKEN environment variable
+api_url = "https://api.github.com"  # optional
+native_tls = false  # optional
+```
+
+## See Also
+
+- [GitHub Integration](/integrations/github)
+- [GitLab Integration](/integrations/gitlab)
+- [Gitea Integration](/integrations/gitea)
+- [Bitbucket Integration](/integrations/bitbucket)

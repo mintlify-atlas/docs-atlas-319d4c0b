@@ -1,97 +1,151 @@
 ---
-title: "Introduction"
-description: "Welcome to the new home for your documentation"
+title: Introduction
+description: A highly customizable changelog generator powered by Git history
 ---
 
-## Setting up
+# Welcome to git-cliff
 
-Get your documentation site up and running in minutes.
+git-cliff is a highly customizable changelog generator that follows [Conventional Commits](https://www.conventionalcommits.org) specifications. Written in Rust, it generates changelogs from your Git history using regex-powered custom parsers and flexible templates.
 
-<Card
-  title="Start here"
-  icon="rocket"
-  href="/quickstart"
-  horizontal
->
-  Follow our three step quickstart guide.
-</Card>
+<img
+  src="https://raw.githubusercontent.com/orhun/git-cliff/main/website/static/img/git-cliff-anim.gif"
+  alt="git-cliff demo"
+/>
 
-## Make it yours
+## What is git-cliff?
 
-Design a docs site that looks great and empowers your users.
+With git-cliff, you can automatically generate professional changelogs from your Git history. Whether you follow conventional commits or have your own commit style, git-cliff adapts to your workflow through powerful configuration options.
 
-<Columns cols={2}>
-  <Card
-    title="Edit locally"
-    icon="pen-to-square"
-    href="/development"
-  >
-    Edit your docs locally and preview them in real time.
+The tool analyzes your Git commits, groups them by type (features, bug fixes, breaking changes, etc.), and generates beautifully formatted changelogs in Markdown or any other format you desire using the Tera templating engine.
+
+## Why use git-cliff?
+
+<CardGroup cols={2}>
+  <Card title="Highly Customizable" icon="sliders">
+    Customize every aspect of your changelog with Tera templates and regex-powered commit parsers. Match your project's style perfectly.
   </Card>
-  <Card
-    title="Customize your site"
-    icon="palette"
-    href="/essentials/settings"
-  >
-    Customize the design and colors of your site to match your brand.
+  <Card title="Conventional Commits" icon="code-commit">
+    Built-in support for conventional commits specification with automatic grouping by commit type (feat, fix, docs, etc.).
   </Card>
-    <Card
-    title="Set up navigation"
-    icon="map"
-    href="/essentials/navigation"
-  >
-    Organize your docs to help users find what they need and succeed with your product.
+  <Card title="Git Integration" icon="git-alt">
+    Native integration with GitHub, GitLab, Gitea, Bitbucket, and Azure DevOps. Pull in PR titles, labels, and contributor information.
   </Card>
-  <Card
-    title="API documentation"
-    icon="terminal"
-    href="/api-reference/introduction"
-  >
-    Auto-generate API documentation from OpenAPI specifications.
+  <Card title="Fast and Reliable" icon="bolt">
+    Written in Rust for blazing-fast performance. Process thousands of commits in seconds.
   </Card>
-</Columns>
+</CardGroup>
 
-## Create beautiful pages
+## Key Features
 
-Everything you need to create world-class documentation.
+### Flexible Commit Parsing
 
-<Columns cols={2}>
-  <Card
-    title="Write with MDX"
-    icon="pen-fancy"
-    href="/essentials/markdown"
-  >
-    Use MDX to style your docs pages.
-  </Card>
-  <Card
-    title="Code samples"
-    icon="code"
-    href="/essentials/code"
-  >
-    Add sample code to demonstrate how to use your product.
-  </Card>
-  <Card
-    title="Images"
-    icon="image"
-    href="/essentials/images"
-  >
-    Display images and other media.
-  </Card>
-  <Card
-    title="Reusable snippets"
-    icon="recycle"
-    href="/essentials/reusable-snippets"
-  >
-    Write once and reuse across your docs.
-  </Card>
-</Columns>
+Parse commits using conventional commit patterns or define your own custom regex parsers:
 
-## Need inspiration?
+```toml
+[git]
+conventional_commits = true
+filter_unconventional = true
 
-<Card
-  title="See complete examples"
-  icon="stars"
-  href="https://mintlify.com/customers"
->
-  Browse our showcase of exceptional documentation sites.
-</Card>
+commit_parsers = [
+  { message = "^feat", group = "⛰️  Features" },
+  { message = "^fix", group = "🐛 Bug Fixes" },
+  { message = "^doc", group = "📚 Documentation" },
+  { message = "^perf", group = "⚡ Performance" },
+  { message = "^refactor", group = "🚜 Refactor" },
+]
+```
+
+### Powerful Templating
+
+Customize your changelog output with Tera templates. Access commit metadata, generate links, and format output exactly how you need:
+
+```jinja2
+{% for group, commits in commits | group_by(attribute="group") %}
+### {{ group | upper_first }}
+{% for commit in commits %}
+- {% if commit.scope %}*({{ commit.scope }})* {% endif %}
+  {{ commit.message }} - ([{{ commit.id | truncate(length=7) }}]({{ commit.id }}))
+{% endfor %}
+{% endfor %}
+```
+
+### Remote Integration
+
+Fetch pull request metadata, contributor information, and more from your Git hosting service:
+
+```toml
+[remote.github]
+owner = "your-org"
+repo = "your-repo"
+```
+
+This enables features like:
+- Pull request titles and links
+- First-time contributor recognition
+- PR labels for custom grouping
+- Automatic version comparisons
+
+### Version Bumping
+
+Automatically determine the next semantic version based on commit types:
+
+```bash
+# Automatically determine version bump
+git-cliff --bump
+
+# Or specify the bump type
+git-cliff --bump major
+git-cliff --bump minor
+git-cliff --bump patch
+```
+
+## Get Started
+
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Get up and running with git-cliff in under 5 minutes
+  </Card>
+  <Card title="Installation" icon="download" href="/installation/overview">
+    View all installation methods for your platform
+  </Card>
+  <Card title="Configuration" icon="gear" href="/configuration/overview">
+    Learn how to configure git-cliff for your project
+  </Card>
+  <Card title="Templating" icon="file-code" href="/templating/overview">
+    Customize your changelog format with templates
+  </Card>
+</CardGroup>
+
+## Real-World Example
+
+Here's an example of changelog output generated by git-cliff from its own repository:
+
+```markdown
+## [2.12.0] - 2026-01-20
+
+### ⛰️  Features
+
+- *(args)* Add offline flag (#1321) - (f19f1cd)
+- *(args)* Add `--skip-tags` cli argument (#1334) - (32cf8c5)
+- *(logging)* Implement commit processing summary (#1355) - (aa01a09)
+
+### 🐛 Bug Fixes
+
+- *(config)* Respect the changelog.output configuration (#1349) - (cfcc5ae)
+- *(logging)* Revert the noisy warn log level to trace (#1353) - (eb99e41)
+- *(remote)* Avoid false first-time contributors when tag timestamp missing (#1348) - (de7cf02)
+
+### 📚 Documentation
+
+- *(contributing)* Clarify Rust toolchain requirements (#1344) - (97b0322)
+- *(install)* Add mise alternative method installation (#1320) - (34b8d30)
+
+## New Contributors ❤️
+
+* @taladar made their first contribution in #1319
+* @barskern made their first contribution in #1321
+```
+
+<Note>
+The `git cliff` command can be used interchangeably with `git-cliff` (with a hyphen) in most environments when `git` is installed.
+</Note>

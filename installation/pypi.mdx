@@ -1,0 +1,382 @@
+---
+title: Install via PyPI
+description: Install git-cliff from PyPI using pip for Python projects
+---
+
+# Install via PyPI
+
+Install git-cliff from [PyPI](https://pypi.org/project/git-cliff/) using pip.
+
+## Quick Install
+
+```bash
+pip install git-cliff
+```
+
+## Installation Steps
+
+<Steps>
+  <Step title="Ensure Python is installed">
+    Check your Python version:
+    
+    ```bash
+    python --version
+    # or
+    python3 --version
+    ```
+    
+    <Note>
+      Python 3.7 or higher is recommended.
+    </Note>
+  </Step>
+  
+  <Step title="Install git-cliff">
+    <Tabs>
+      <Tab title="System-wide">
+        Install globally:
+        
+        ```bash
+        pip install git-cliff
+        ```
+        
+        Or with Python 3:
+        ```bash
+        pip3 install git-cliff
+        ```
+      </Tab>
+      
+      <Tab title="Virtual Environment">
+        Install in a virtual environment (recommended):
+        
+        ```bash
+        # Create virtual environment
+        python -m venv venv
+        
+        # Activate it
+        source venv/bin/activate  # Linux/macOS
+        # or
+        venv\Scripts\activate     # Windows
+        
+        # Install git-cliff
+        pip install git-cliff
+        ```
+      </Tab>
+      
+      <Tab title="User Install">
+        Install for current user only:
+        
+        ```bash
+        pip install --user git-cliff
+        ```
+        
+        <Note>
+          User installations go to `~/.local/bin` on Linux/macOS. Ensure this is in your PATH.
+        </Note>
+      </Tab>
+      
+      <Tab title="pipx">
+        Install with [pipx](https://pipx.pypa.io/) for isolated environments:
+        
+        ```bash
+        # Install pipx if needed
+        pip install pipx
+        pipx ensurepath
+        
+        # Install git-cliff
+        pipx install git-cliff
+        ```
+      </Tab>
+    </Tabs>
+  </Step>
+  
+  <Step title="Verify installation">
+    ```bash
+    git-cliff --version
+    ```
+    
+    Expected output:
+    ```
+    git-cliff 2.7.0
+    ```
+  </Step>
+  
+  <Step title="Test in a repository">
+    ```bash
+    cd /path/to/your/git/repo
+    git-cliff --help
+    ```
+  </Step>
+</Steps>
+
+## Using in Python Projects
+
+### Add to requirements.txt
+
+```text requirements.txt
+git-cliff==2.7.0
+```
+
+Install dependencies:
+```bash
+pip install -r requirements.txt
+```
+
+### Add to pyproject.toml
+
+```toml pyproject.toml
+[project.optional-dependencies]
+dev = [
+    "git-cliff>=2.7.0",
+]
+```
+
+Install with dev dependencies:
+```bash
+pip install -e ".[dev]"
+```
+
+### Add to setup.py
+
+```python setup.py
+from setuptools import setup
+
+setup(
+    name="your-package",
+    extras_require={
+        "dev": [
+            "git-cliff>=2.7.0",
+        ],
+    },
+)
+```
+
+## Integration Examples
+
+<Tabs>
+  <Tab title="Python Script">
+    Call git-cliff from Python:
+    
+    ```python generate_changelog.py
+    #!/usr/bin/env python3
+    import subprocess
+    import sys
+    
+    def generate_changelog(output_file="CHANGELOG.md"):
+        """Generate changelog using git-cliff."""
+        try:
+            result = subprocess.run(
+                ["git-cliff", "-o", output_file],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+            print(f"Changelog generated: {output_file}")
+            return result.returncode
+        except subprocess.CalledProcessError as e:
+            print(f"Error generating changelog: {e.stderr}", file=sys.stderr)
+            return e.returncode
+        except FileNotFoundError:
+            print("Error: git-cliff not found. Install with 'pip install git-cliff'", file=sys.stderr)
+            return 1
+    
+    if __name__ == "__main__":
+        sys.exit(generate_changelog())
+    ```
+    
+    Usage:
+    ```bash
+    python generate_changelog.py
+    ```
+  </Tab>
+  
+  <Tab title="Release Script">
+    Automate releases with Python:
+    
+    ```python release.py
+    #!/usr/bin/env python3
+    import subprocess
+    import sys
+    from pathlib import Path
+    
+    def run_command(cmd, **kwargs):
+        """Run a shell command."""
+        result = subprocess.run(cmd, shell=True, text=True, capture_output=True, **kwargs)
+        if result.returncode != 0:
+            print(f"Error: {result.stderr}", file=sys.stderr)
+            sys.exit(result.returncode)
+        return result.stdout.strip()
+    
+    def release(version):
+        """Create a new release."""
+        print(f"Creating release {version}...")
+        
+        # Generate changelog
+        print("Generating changelog...")
+        run_command(f"git-cliff --tag v{version} -o CHANGELOG.md")
+        
+        # Commit changelog
+        print("Committing changelog...")
+        run_command("git add CHANGELOG.md")
+        run_command(f'git commit -m "chore: release v{version}"')
+        
+        # Create tag
+        print(f"Creating tag v{version}...")
+        run_command(f'git tag -a v{version} -m "Release v{version}"')
+        
+        print(f"\nRelease v{version} created successfully!")
+        print("Don't forget to push: git push && git push --tags")
+    
+    if __name__ == "__main__":
+        if len(sys.argv) != 2:
+            print("Usage: python release.py <version>", file=sys.stderr)
+            sys.exit(1)
+        
+        release(sys.argv[1])
+    ```
+    
+    Usage:
+    ```bash
+    python release.py 1.2.0
+    ```
+  </Tab>
+  
+  <Tab title="Pre-commit Hook">
+    Use with [pre-commit](https://pre-commit.com/):
+    
+    ```yaml .pre-commit-config.yaml
+    repos:
+      - repo: local
+        hooks:
+          - id: git-cliff
+            name: Generate changelog
+            entry: git-cliff
+            args: ['-o', 'CHANGELOG.md', '--unreleased']
+            language: system
+            pass_filenames: false
+            stages: [commit]
+    ```
+    
+    Install pre-commit:
+    ```bash
+    pip install pre-commit
+    pre-commit install
+    ```
+  </Tab>
+</Tabs>
+
+## Upgrading
+
+Upgrade to the latest version:
+
+```bash
+pip install --upgrade git-cliff
+```
+
+Upgrade to a specific version:
+```bash
+pip install --upgrade git-cliff==2.7.0
+```
+
+## Uninstalling
+
+Remove git-cliff:
+
+```bash
+pip uninstall git-cliff
+```
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="pip: command not found">
+    Install pip:
+    
+    **Linux (Debian/Ubuntu):**
+    ```bash
+    sudo apt-get update
+    sudo apt-get install python3-pip
+    ```
+    
+    **Linux (Fedora):**
+    ```bash
+    sudo dnf install python3-pip
+    ```
+    
+    **macOS:**
+    ```bash
+    python3 -m ensurepip --upgrade
+    ```
+  </Accordion>
+  
+  <Accordion title="git-cliff: command not found after installation">
+    The installation directory may not be in your PATH.
+    
+    **Check installation location:**
+    ```bash
+    pip show -f git-cliff
+    ```
+    
+    **Add to PATH (Linux/macOS):**
+    ```bash
+    # Add to ~/.bashrc or ~/.zshrc
+    export PATH="$HOME/.local/bin:$PATH"
+    ```
+    
+    **Add to PATH (Windows):**
+    Add `%USERPROFILE%\AppData\Local\Programs\Python\Python3x\Scripts` to your PATH environment variable.
+  </Accordion>
+  
+  <Accordion title="Permission denied errors">
+    If you get permission errors during installation:
+    
+    1. Use `--user` flag:
+       ```bash
+       pip install --user git-cliff
+       ```
+    
+    2. Or use a virtual environment:
+       ```bash
+       python -m venv venv
+       source venv/bin/activate
+       pip install git-cliff
+       ```
+    
+    3. Avoid using `sudo pip install` as it can cause issues.
+  </Accordion>
+  
+  <Accordion title="Conflicts with other packages">
+    Use pipx for isolated installation:
+    
+    ```bash
+    pip install pipx
+    pipx install git-cliff
+    ```
+    
+    Or use a virtual environment for your project.
+  </Accordion>
+  
+  <Accordion title="SSL certificate verification failed">
+    If you encounter SSL errors:
+    
+    ```bash
+    pip install --trusted-host pypi.org --trusted-host files.pythonhosted.org git-cliff
+    ```
+    
+    Better solution: Update your CA certificates:
+    ```bash
+    pip install --upgrade certifi
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Configuration" icon="gear" href="/configuration/overview">
+    Configure git-cliff for your project
+  </Card>
+  
+  <Card title="Usage Examples" icon="book" href="/usage/basic-usage">
+    Learn how to use git-cliff
+  </Card>
+</CardGroup>

@@ -1,0 +1,271 @@
+---
+title: Tips and Tricks
+description: Advanced patterns and techniques for git-cliff
+---
+
+Learn advanced techniques to customize git-cliff for your specific workflow needs.
+
+<Accordion title="Use PR labels as groups">
+
+Organize your changelog by GitHub PR labels instead of commit message patterns:
+
+```toml
+[git]
+commit_parsers = [
+  { field = "github.pr_labels", pattern = "breaking-change", group = "<!-- 0 --> 🏗️ Breaking changes" },
+  { field = "github.pr_labels", pattern = "type/enhancement", group = "<!-- 1 --> 🚀 Features" },
+  { field = "github.pr_labels", pattern = "type/bug", group = "<!-- 2 --> 🐛 Fixes" },
+  { field = "github.pr_labels", pattern = "type/update", group = "<!-- 3 --> 🧪 Dependencies" },
+  { field = "github.pr_labels", pattern = "type/refactor", group = "<!-- 4 --> 🏭 Refactor" },
+  { field = "github.pr_labels", pattern = "area/documentation", group = "<!-- 5 --> 📝 Documentation" },
+  { field = "github.pr_labels", pattern = ".*", group = "<!-- 6 --> 🌀 Miscellaneous" },
+]
+```
+
+You can also skip commits based on labels:
+
+```jinja2
+{% if commit.remote.pr_labels is containing("skip-release-notes") %}
+    {% continue %}
+{% endif %}
+```
+
+</Accordion>
+
+<Accordion title="Custom commit parsers">
+
+Create sophisticated commit parsing rules:
+
+**Skip commits with empty body:**
+
+```toml
+[git]
+commit_parsers = [
+  { body = "$^", skip = true },
+]
+```
+
+**Remove gitmoji from commit messages:**
+
+```toml
+[git]
+commit_preprocessors = [
+  # Remove gitmoji, both actual UTF emoji and :emoji:
+  { pattern = ' *(:\w+:|[\p{Emoji_Presentation}\p{Extended_Pictographic}](?:\u{FE0F})?\u{200D}?) *', replace = "" },
+]
+```
+
+**Control group order with HTML comments:**
+
+```toml
+[git]
+commit_parsers = [
+    { message = "^feat*", group = "<!-- 0 -->:rocket: New features" },
+    { message = "^fix*", group = "<!-- 1 -->:bug: Bug fixes" },
+    { message = "^perf*", group = "<!-- 2 -->:zap: Performance" },
+    { message = "^chore*", group = "<!-- 3 -->:gear: Miscellaneous" },
+]
+```
+
+Then strip the HTML tags in your template:
+
+```jinja2
+### {{ group | striptags | trim | upper_first }}
+```
+
+</Accordion>
+
+<Accordion title="Filtering commits">
+
+Use template filters to refine which commits appear in your changelog:
+
+**Filter out merge commits:**
+
+```jinja2
+{% for group, commits in commits | filter(attribute="merge_commit", value=false) | group_by(attribute="group") %}
+```
+
+**Discard duplicate commits:**
+
+```jinja2
+{% for commit in commits | unique(attribute="message") %}
+```
+
+**Combine multiple filters:**
+
+```jinja2
+{% for commit in commits 
+   | filter(attribute="merge_commit", value=false) 
+   | unique(attribute="message") 
+   | filter(attribute="breaking", value=true) %}
+```
+
+</Accordion>
+
+<Accordion title="Multiple output formats">
+
+Generate changelogs in different formats for various use cases:
+
+**Convert Markdown to PDF:**
+
+```bash
+pandoc --from=gfm --to=pdf -o CHANGELOG.pdf CHANGELOG.md
+```
+
+**For Unicode support (emojis, special characters):**
+
+```bash
+pandoc --from=gfm --to=pdf --pdf-engine=xelatex -o CHANGELOG.pdf CHANGELOG.md --variable mainfont="Segoe UI Emoji"
+```
+
+**Generate JSON for programmatic use:**
+
+```bash
+git cliff --context -o changelog-context.json
+```
+
+**Output to multiple formats:**
+
+```bash
+# Markdown for GitHub
+git cliff -o CHANGELOG.md
+
+# JSON for automation
+git cliff --context -o changelog.json
+
+# PDF for releases
+pandoc --from=gfm --to=pdf -o CHANGELOG.pdf CHANGELOG.md
+```
+
+</Accordion>
+
+<Accordion title="Prepend to existing changelog">
+
+Add new releases to the top of an existing changelog file:
+
+**Basic prepend:**
+
+```bash
+git cliff --unreleased --prepend CHANGELOG.md
+```
+
+**Prepend specific range:**
+
+```bash
+git cliff v1.0.0..HEAD --prepend CHANGELOG.md
+```
+
+**Prepend with tag:**
+
+```bash
+git cliff --tag v2.0.0 --prepend CHANGELOG.md
+```
+
+**Workflow example:**
+
+```bash
+# Generate initial changelog
+git cliff -o CHANGELOG.md
+
+# After new commits, prepend unreleased changes
+git cliff --unreleased --tag v1.1.0 --prepend CHANGELOG.md
+
+# Commit the updated changelog
+git add CHANGELOG.md
+git commit -m "chore: update changelog for v1.1.0"
+git tag v1.1.0
+```
+
+</Accordion>
+
+<Accordion title="Handle API rate limits">
+
+When working with remote Git services, you may encounter rate limiting:
+
+**Use offline mode:**
+
+```bash
+git cliff --offline
+```
+
+This generates the changelog using only local Git commit information. Note that PR titles, labels, and other remote metadata will not be included.
+
+**Use environment variables for authentication:**
+
+```bash
+# GitHub
+export GITHUB_TOKEN="your_token_here"
+git cliff
+
+# GitLab
+export GITLAB_TOKEN="your_token_here"
+git cliff
+```
+
+</Accordion>
+
+<Accordion title="CI/CD integration with environment variables">
+
+Leverage CI/CD environment variables in your templates:
+
+**GitLab CI:**
+
+```jinja2
+{{ get_env(name="CI_PROJECT_URL") }}/-/tags/{{ version }}
+```
+
+**GitHub Actions:**
+
+```jinja2
+{{ get_env(name="GITHUB_SERVER_URL") }}/{{ get_env(name="GITHUB_REPOSITORY") }}/releases/tag/{{ version }}
+```
+
+**Generic CI pattern:**
+
+```jinja2
+{% set repo_url = get_env(name="REPOSITORY_URL", default="https://github.com/yourorg/yourrepo") %}
+{{ repo_url }}/releases/tag/{{ version }}
+```
+
+</Accordion>
+
+## Real-world patterns
+
+### Monorepo changelog per package
+
+Generate separate changelogs for different packages:
+
+```bash
+# Backend changelog
+git cliff --include-path 'packages/backend/**' -o packages/backend/CHANGELOG.md
+
+# Frontend changelog
+git cliff --include-path 'packages/frontend/**' -o packages/frontend/CHANGELOG.md
+```
+
+### Custom grouping by scope
+
+Group commits by conventional commit scope:
+
+```toml
+[git]
+commit_parsers = [
+  { message = ".*\\(api\\).*", group = "API Changes" },
+  { message = ".*\\(ui\\).*", group = "UI Changes" },
+  { message = ".*\\(core\\).*", group = "Core Changes" },
+  { message = ".*", group = "Other Changes" },
+]
+```
+
+### Security-focused changelog
+
+Highlight security fixes prominently:
+
+```toml
+[git]
+commit_parsers = [
+  { message = "^sec.*|security|CVE", group = "<!-- 0 --> 🔒 Security", default_scope = "security" },
+  { message = "^fix.*", group = "<!-- 1 --> 🐛 Bug Fixes" },
+  { message = "^feat.*", group = "<!-- 2 --> ✨ Features" },
+]
+```

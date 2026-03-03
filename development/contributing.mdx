@@ -1,0 +1,380 @@
+---
+title: Contributing
+description: Guide to contributing to git-cliff development
+---
+
+Thank you for your interest in contributing to git-cliff! This guide will help you get started with development, testing, and submitting contributions.
+
+## Before You Start
+
+Before making significant changes:
+
+- Discuss your proposed changes via [GitHub Issues](https://github.com/orhun/git-cliff/issues)
+- Check existing issues and pull requests to avoid duplicates
+- Review the [Code of Conduct](https://github.com/orhun/git-cliff/blob/main/CODE_OF_CONDUCT.md)
+- Join the community on [Discord](https://discord.gg/W3mAwMDWH4) or [Matrix](https://matrix.to/#/#git-cliff:matrix.org)
+
+## Development Setup
+
+<Steps>
+  <Step title="Install Rust">
+    Install Rust **1.85.1** or later:
+
+    ```bash
+    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+    ```
+
+    Verify installation:
+
+    ```bash
+    rustc --version
+    ```
+  </Step>
+
+  <Step title="Install nightly toolchain">
+    The nightly toolchain is required for `rustfmt`:
+
+    ```bash
+    rustup toolchain install nightly
+    ```
+
+    Optionally, configure your editor/IDE to use the nightly toolchain for formatting in this repository.
+  </Step>
+
+  <Step title="Fork and clone">
+    Fork the repository on GitHub, then clone your fork:
+
+    ```bash
+    git clone https://github.com/{username}/git-cliff
+    cd git-cliff
+    ```
+
+    Or using SSH:
+
+    ```bash
+    git clone git@github.com:{username}/git-cliff
+    cd git-cliff
+    ```
+  </Step>
+
+  <Step title="Fetch tags">
+    Tags are required for tests to pass:
+
+    ```bash
+    git fetch --tags https://github.com/orhun/git-cliff
+    ```
+  </Step>
+
+  <Step title="Build the project">
+    Build git-cliff to ensure everything is set up correctly:
+
+    ```bash
+    cargo build
+    ```
+
+    This will compile both the `git-cliff-core` library and the `git-cliff` CLI binary.
+  </Step>
+</Steps>
+
+## Development Workflow
+
+### Making Changes
+
+1. **Create a branch** from `main`:
+
+   ```bash
+   git checkout -b feature/my-new-feature
+   ```
+
+2. **Follow Conventional Commits**:
+
+   All commits should follow the [Conventional Commits](https://www.conventionalcommits.org/) specification:
+
+   ```
+   <type>(<scope>): <description>
+
+   [optional body]
+
+   [optional footer]
+   ```
+
+   Types: `feat`, `fix`, `docs`, `refactor`, `test`, `chore`, `ci`, `perf`, `style`
+
+   Examples:
+   ```bash
+   git commit -m "feat(parser): add support for custom footers"
+   git commit -m "fix(template): handle empty release versions"
+   git commit -m "docs: update configuration examples"
+   ```
+
+3. **Write or update tests**:
+
+   Add tests for new features or update existing tests for changes:
+
+   ```bash
+   cargo test
+   ```
+
+   All tests must pass before submitting a PR.
+
+### Testing
+
+#### Run all tests
+
+```bash
+cargo test
+```
+
+#### Update snapshot tests
+
+If you've changed output formats or templates, update snapshots:
+
+```bash
+env UPDATE_EXPECT=1 cargo test
+```
+
+Snapshot tests use the `expect-test` crate to verify output matches expected values.
+
+#### Run specific tests
+
+```bash
+# Test a specific module
+cargo test --package git-cliff-core --lib changelog
+
+# Test with a pattern
+cargo test conventional_commit
+```
+
+#### Test with features
+
+```bash
+# Test without default features
+cargo test --no-default-features
+
+# Test with specific features
+cargo test --features github,gitlab
+```
+
+### Code Quality Checks
+
+Before submitting a PR, run all quality checks locally:
+
+#### Clippy (required)
+
+Run Clippy with warnings treated as errors:
+
+```bash
+cargo clippy --tests --verbose -- -D warnings
+```
+
+All warnings must be resolved.
+
+#### Clippy pedantic (optional but recommended)
+
+For additional linting guidance:
+
+```bash
+cargo clippy --all-targets --verbose -- -W clippy::pedantic
+```
+
+<Note>
+  Pedantic lints are **optional** but recommended for new code. You may allow specific pedantic lints with clear justification in comments.
+</Note>
+
+#### Formatting (required)
+
+Check formatting with nightly rustfmt:
+
+```bash
+cargo +nightly fmt --all -- --check --verbose
+```
+
+If formatting fails, auto-format the code:
+
+```bash
+cargo +nightly fmt --all
+```
+
+<Warning>
+  The project uses **unstable rustfmt options** that require the nightly toolchain. Make sure you're using `cargo +nightly fmt`.
+</Warning>
+
+### Project Structure
+
+Understand the workspace layout:
+
+```
+git-cliff/
+├── git-cliff-core/          # Core library
+│   ├── src/
+│   │   ├── changelog.rs     # Changelog generation
+│   │   ├── commit.rs        # Commit parsing
+│   │   ├── config.rs        # Configuration
+│   │   ├── template.rs      # Template engine
+│   │   ├── release.rs       # Release management
+│   │   ├── remote/          # Remote integrations
+│   │   └── ...
+│   └── Cargo.toml
+├── git-cliff/               # CLI binary
+│   ├── src/
+│   │   ├── main.rs          # Entry point
+│   │   ├── args.rs          # CLI arguments
+│   │   └── lib.rs           # Core CLI logic
+│   └── Cargo.toml
+└── Cargo.toml               # Workspace manifest
+```
+
+See the [Architecture](/development/architecture) page for detailed module information.
+
+## Submitting a Pull Request
+
+<Steps>
+  <Step title="Ensure all checks pass">
+    Before submitting, verify:
+
+    - ✅ All tests pass: `cargo test`
+    - ✅ Clippy succeeds: `cargo clippy --tests -- -D warnings`
+    - ✅ Code is formatted: `cargo +nightly fmt --all -- --check`
+    - ✅ Documentation is updated (if applicable)
+  </Step>
+
+  <Step title="Push your changes">
+    Push your branch to your fork:
+
+    ```bash
+    git push origin feature/my-new-feature
+    ```
+  </Step>
+
+  <Step title="Create pull request">
+    1. Go to the [git-cliff repository](https://github.com/orhun/git-cliff)
+    2. Click "New Pull Request"
+    3. Select your fork and branch
+    4. Fill out the [PR template](https://github.com/orhun/git-cliff/blob/main/.github/PULL_REQUEST_TEMPLATE.md)
+  </Step>
+
+  <Step title="Address feedback">
+    - Respond to review comments
+    - Make requested changes
+    - Push updates to the same branch
+    - Re-run all checks after changes
+  </Step>
+</Steps>
+
+## Pull Request Guidelines
+
+### PR Description
+
+Provide a clear description that includes:
+
+- **What** changed
+- **Why** the change was made
+- **How** it was implemented
+- **Testing** performed
+- Related issues (e.g., "Fixes #123")
+
+### Documentation
+
+Update documentation if your changes affect:
+
+- User-facing features
+- Configuration options
+- Command-line arguments
+- API interfaces
+
+### Breaking Changes
+
+If your PR includes breaking changes:
+
+1. Mark commits with `BREAKING CHANGE:` in the footer
+2. Clearly explain the breaking change in the PR description
+3. Provide migration guidance for users
+
+## Code Style
+
+### Rust Conventions
+
+- Follow the [Rust API Guidelines](https://rust-lang.github.io/api-guidelines/)
+- Use descriptive variable and function names
+- Add doc comments for public APIs
+- Prefer `Result` over `unwrap()` (enforced by clippy)
+- Use `?` operator for error propagation
+
+### Documentation Comments
+
+Write documentation for public items:
+
+```rust
+/// Generates a changelog from the given releases.
+///
+/// # Arguments
+///
+/// * `releases` - Vector of releases to include
+/// * `config` - Configuration for generation
+///
+/// # Errors
+///
+/// Returns an error if template rendering fails.
+pub fn generate_changelog(releases: Vec<Release>, config: Config) -> Result<String> {
+    // ...
+}
+```
+
+### Error Handling
+
+Use the project's `Result` type:
+
+```rust
+use crate::error::Result;
+
+fn process_commit(commit: &Commit) -> Result<String> {
+    let message = commit.message.ok_or(Error::MissingCommitMessage)?;
+    Ok(message.trim().to_string())
+}
+```
+
+## Toolchain Information
+
+### Stable vs Nightly
+
+- **Stable Rust (1.85.1+)**: Used for builds and tests
+- **Nightly Rust**: Required only for formatting with unstable `rustfmt` options
+
+CI runs both stable and nightly checks.
+
+### Rust Edition
+
+The project uses **Rust 2024 edition**:
+
+```toml
+edition = "2024"
+rust-version = "1.85.1"
+```
+
+## Getting Help
+
+If you need assistance:
+
+- **GitHub Issues**: [Report bugs or request features](https://github.com/orhun/git-cliff/issues)
+- **GitHub Discussions**: [Ask questions](https://github.com/orhun/git-cliff/discussions)
+- **Discord**: [Join the community](https://discord.gg/W3mAwMDWH4)
+- **Matrix**: [Chat on Matrix](https://matrix.to/#/#git-cliff:matrix.org)
+
+## License
+
+By contributing, you agree that your contributions will be licensed under:
+
+- [MIT License](https://github.com/orhun/git-cliff/blob/main/LICENSE-MIT)
+- [Apache License 2.0](https://github.com/orhun/git-cliff/blob/main/LICENSE-APACHE)
+
+You may choose either license for your use.
+
+## Recognition
+
+All contributors are recognized in:
+
+- The [CHANGELOG.md](https://github.com/orhun/git-cliff/blob/main/CHANGELOG.md)
+- The [README.md contributors section](https://github.com/orhun/git-cliff#contributors)
+- GitHub's contributor graph
+
+Thank you for contributing to git-cliff!

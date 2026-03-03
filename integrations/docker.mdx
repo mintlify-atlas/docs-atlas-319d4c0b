@@ -1,0 +1,377 @@
+---
+title: Docker
+description: Run git-cliff in Docker containers for consistent and isolated changelog generation
+---
+
+git-cliff provides official Docker images that allow you to run the tool in any containerized environment without installing it directly on your system.
+
+## Docker Image
+
+The official Docker image is available on Docker Hub:
+
+- **Docker Hub**: `orhunp/git-cliff`
+- **GitHub Container Registry**: `ghcr.io/orhun/git-cliff/git-cliff`
+
+## Quick Start
+
+Generate a changelog in the current directory:
+
+```bash
+docker run --rm -v "$PWD:/app" orhunp/git-cliff:latest
+```
+
+## Basic Usage
+
+### Generate Changelog
+
+<CodeGroup>
+```bash Output to File
+docker run --rm -v "$PWD:/app" orhunp/git-cliff:latest \
+  --output CHANGELOG.md
+```
+
+```bash With Custom Config
+docker run --rm -v "$PWD:/app" orhunp/git-cliff:latest \
+  --config cliff.toml \
+  --output CHANGELOG.md
+```
+
+```bash Latest Release Only
+docker run --rm -v "$PWD:/app" orhunp/git-cliff:latest \
+  --latest \
+  --output RELEASE_NOTES.md
+```
+
+```bash Verbose Output
+docker run --rm -v "$PWD:/app" orhunp/git-cliff:latest \
+  --verbose \
+  --output CHANGELOG.md
+```
+</CodeGroup>
+
+## Volume Mounting
+
+The Docker image uses `/app` as the working directory. You need to mount your repository as a volume:
+
+### Mount Current Directory
+
+```bash
+# Linux/macOS
+docker run --rm -v "$PWD:/app" orhunp/git-cliff:latest
+
+# Windows (PowerShell)
+docker run --rm -v "${PWD}:/app" orhunp/git-cliff:latest
+
+# Windows (Command Prompt)
+docker run --rm -v "%cd%:/app" orhunp/git-cliff:latest
+```
+
+### Mount Specific Directory
+
+```bash
+docker run --rm -v "/path/to/your/repo:/app" orhunp/git-cliff:latest
+```
+
+### Multiple Volume Mounts
+
+```bash Mount Config Separately
+docker run --rm \
+  -v "$PWD:/app" \
+  -v "$HOME/.config/git-cliff:/config" \
+  orhunp/git-cliff:latest \
+  --config /config/cliff.toml
+```
+
+## Image Tags
+
+The following tags are available:
+
+| Tag | Description |
+|-----|-------------|
+| `latest` | Latest stable release |
+| `main` | Latest build from main branch |
+| `<version>` | Specific version (e.g., `2.0.0`) |
+| `sha-<hash>` | Specific commit SHA |
+
+### Using Specific Versions
+
+```bash
+# Use a specific version
+docker run --rm -v "$PWD:/app" orhunp/git-cliff:2.0.0
+
+# Use the latest development version
+docker run --rm -v "$PWD:/app" orhunp/git-cliff:main
+```
+
+## Docker Compose
+
+You can integrate git-cliff into your Docker Compose workflow:
+
+<CodeGroup>
+```yaml Basic Setup
+version: '3.8'
+
+services:
+  git-cliff:
+    image: orhunp/git-cliff:latest
+    volumes:
+      - .:/app
+    command: --output CHANGELOG.md --verbose
+```
+
+```yaml With Custom Config
+version: '3.8'
+
+services:
+  git-cliff:
+    image: orhunp/git-cliff:latest
+    volumes:
+      - .:/app
+      - ./config/cliff.toml:/app/cliff.toml:ro
+    command: --config cliff.toml --output CHANGELOG.md
+```
+
+```yaml Multiple Services
+version: '3.8'
+
+services:
+  changelog:
+    image: orhunp/git-cliff:latest
+    volumes:
+      - .:/app
+    command: --output CHANGELOG.md
+
+  release-notes:
+    image: orhunp/git-cliff:latest
+    volumes:
+      - .:/app
+    command: --latest --output RELEASE_NOTES.md
+```
+</CodeGroup>
+
+### Running with Docker Compose
+
+```bash
+# Generate changelog
+docker compose run --rm git-cliff
+
+# Run specific service
+docker compose run --rm changelog
+
+# Override command
+docker compose run --rm git-cliff --latest
+```
+
+## Image Details
+
+The git-cliff Docker image is built with the following characteristics:
+
+### Base Image
+
+- Built on `debian:bookworm-slim` for minimal size
+- Multi-stage build using `cargo-chef` for optimized layer caching
+- Built for `linux/amd64` and `linux/arm64` platforms
+
+### Features Enabled
+
+The Docker image includes support for:
+
+- GitHub integration (`--github-repo`)
+- GitLab integration (`--gitlab-repo`)
+- Bitbucket integration (`--bitbucket-repo`)
+
+### Security
+
+The image includes special handling for Git security:
+
+```dockerfile
+# All directories are marked as safe
+RUN echo '[safe]\n\tdirectory = *' > /etc/gitconfig
+```
+
+This allows git-cliff to work with repositories mounted from any user, which is essential for CI/CD environments.
+
+### Entrypoint
+
+The image uses a custom entrypoint that automatically adjusts user permissions to match the mounted volume:
+
+```bash
+#!/bin/sh
+if [ "$(id -u)" -ne "$(stat -c '%u' .)" ]; then
+  eids="$(stat -c '--euid %u --egid %g' .)"
+fi
+exec ${eids:+setpriv --clear-groups $eids} git-cliff $@
+```
+
+This ensures git-cliff can write files with the correct ownership.
+
+## Advanced Usage
+
+### Running as Non-Root User
+
+```bash
+docker run --rm \
+  --user $(id -u):$(id -g) \
+  -v "$PWD:/app" \
+  orhunp/git-cliff:latest
+```
+
+### Using Environment Variables
+
+```bash
+docker run --rm \
+  -v "$PWD:/app" \
+  -e GITHUB_TOKEN="your-token" \
+  orhunp/git-cliff:latest \
+  --github-repo owner/repo
+```
+
+### Custom Working Directory
+
+```bash
+docker run --rm \
+  -v "$PWD:/workspace" \
+  -w /workspace \
+  orhunp/git-cliff:latest
+```
+
+### Interactive Shell for Debugging
+
+```bash
+docker run --rm -it \
+  -v "$PWD:/app" \
+  --entrypoint sh \
+  orhunp/git-cliff:latest
+```
+
+## CI/CD Integration
+
+### GitLab CI
+
+```yaml GitLab CI Pipeline
+generate-changelog:
+  image: orhunp/git-cliff:latest
+  script:
+    - git-cliff --output CHANGELOG.md --verbose
+  artifacts:
+    paths:
+      - CHANGELOG.md
+```
+
+### GitHub Actions
+
+See the [GitHub Actions](/integrations/github-actions) guide for detailed examples.
+
+```yaml
+- name: Generate changelog
+  run: |
+    docker run --rm -v "$PWD:/app" orhunp/git-cliff:latest \
+      --output CHANGELOG.md --verbose
+```
+
+### Jenkins
+
+```groovy
+pipeline {
+    agent any
+    stages {
+        stage('Generate Changelog') {
+            steps {
+                sh '''
+                    docker run --rm -v "$PWD:/app" orhunp/git-cliff:latest \
+                        --output CHANGELOG.md
+                '''
+            }
+        }
+    }
+}
+```
+
+### CircleCI
+
+```yaml
+version: 2.1
+
+jobs:
+  changelog:
+    docker:
+      - image: orhunp/git-cliff:latest
+    steps:
+      - checkout
+      - run:
+          name: Generate changelog
+          command: git-cliff --output CHANGELOG.md
+```
+
+## Building Custom Images
+
+If you need to customize the Docker image, you can build your own based on the official Dockerfile:
+
+```dockerfile Custom Dockerfile
+FROM orhunp/git-cliff:latest
+
+# Add your customizations
+COPY custom-cliff.toml /app/cliff.toml
+
+# Set default arguments
+ENTRYPOINT ["git-cliff"]
+CMD ["--config", "/app/cliff.toml", "--output", "CHANGELOG.md"]
+```
+
+```bash
+# Build custom image
+docker build -t my-git-cliff .
+
+# Run custom image
+docker run --rm -v "$PWD:/app" my-git-cliff
+```
+
+## Troubleshooting
+
+### Permission Denied Errors
+
+If you encounter permission errors when writing files:
+
+```bash
+# Run with your user ID
+docker run --rm --user $(id -u):$(id -g) -v "$PWD:/app" orhunp/git-cliff:latest
+```
+
+### Git Not Recognizing Repository
+
+Ensure you're mounting the repository root, not a subdirectory:
+
+```bash
+# Correct - mount from repository root
+cd /path/to/repo
+docker run --rm -v "$PWD:/app" orhunp/git-cliff:latest
+
+# Incorrect - don't mount subdirectories
+docker run --rm -v "$PWD/src:/app" orhunp/git-cliff:latest
+```
+
+### Config File Not Found
+
+Make sure the config file is in the mounted directory:
+
+```bash
+# List files to verify
+docker run --rm -v "$PWD:/app" --entrypoint ls orhunp/git-cliff:latest -la
+
+# Or specify full path
+docker run --rm -v "$PWD:/app" orhunp/git-cliff:latest --config /app/config/cliff.toml
+```
+
+## Tips and Best Practices
+
+<Tip>
+Always use `--rm` flag to automatically remove the container after it exits, keeping your system clean.
+</Tip>
+
+<Warning>
+The Docker image runs as root by default but adjusts permissions automatically. If you encounter issues, try running with `--user $(id -u):$(id -g)`.
+</Warning>
+
+<Note>
+For CI/CD environments, pin to a specific version tag (e.g., `2.0.0`) instead of using `latest` to ensure reproducible builds.
+</Note>

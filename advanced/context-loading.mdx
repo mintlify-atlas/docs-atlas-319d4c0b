@@ -1,0 +1,362 @@
+---
+title: Context Loading
+description: Load and manipulate changelog context programmatically
+---
+
+Learn how to use git-cliff's context loading feature to programmatically generate and customize changelogs.
+
+## Overview
+
+Context loading allows you to export git-cliff's internal changelog context as JSON, modify it with external tools, and then load it back to generate customized changelogs. This enables powerful programmatic workflows and integrations.
+
+## Basic workflow
+
+The typical context loading workflow involves three steps:
+
+1. Export context to JSON
+2. Process/modify the context
+3. Load context and generate changelog
+
+### Export context
+
+Generate a JSON file containing the changelog context:
+
+```bash
+git cliff --context -o context.json
+```
+
+This creates a JSON file with all commits, releases, and metadata that git-cliff would use to generate a changelog.
+
+### Process context
+
+Modify the context using any tool that can manipulate JSON (jq, Python, Node.js, etc.).
+
+### Load context
+
+Generate a changelog from the modified context:
+
+```bash
+git cliff --from-context context.json -o CHANGELOG.md
+```
+
+You can also read context from stdin:
+
+```bash
+cat context.json | git cliff --from-context - -o CHANGELOG.md
+```
+
+## JSON context structure
+
+The context JSON contains all the data git-cliff uses to generate changelogs.
+
+### Commit structure
+
+Each commit in the context has this structure:
+
+```json
+{
+  "id": "5061081d6272b1da2146fab49d803c193db309d9",
+  "message": "feat: add new feature",
+  "body": "Detailed description of the feature",
+  "author": {
+    "name": "John Doe",
+    "email": "john@example.com"
+  },
+  "committer": {
+    "name": "John Doe",
+    "email": "john@example.com"
+  },
+  "timestamp": 1234567890,
+  "group": "Features",
+  "scope": "api",
+  "breaking": false,
+  "links": [],
+  "remote": {
+    "username": "johndoe",
+    "pr_number": 123,
+    "pr_title": "Add new feature",
+    "pr_labels": ["enhancement"]
+  }
+}
+```
+
+### Adding custom metadata
+
+Use the `extra` field to add arbitrary metadata to commits or releases:
+
+```json
+{
+  "id": "5061081d6272b1da2146fab49d803c193db309d9",
+  "message": "commit message",
+  "extra": {
+    "note": "this is some arbitrary data",
+    "reviewer": "jane@example.com",
+    "jira_ticket": "PROJ-123"
+  }
+}
+```
+
+Access this data in your templates:
+
+```jinja2
+{% if commit.extra.jira_ticket %}
+  [{{ commit.extra.jira_ticket }}]
+{% endif %}
+```
+
+## Programmatic usage
+
+### Filter commits with jq
+
+Remove commits from specific authors:
+
+```bash
+git cliff --context -o context.json
+jq '.releases[].commits = [.releases[].commits[] | select(.author.email != "bot@example.com")]' context.json > filtered.json
+git cliff --from-context filtered.json -o CHANGELOG.md
+```
+
+### Add metadata with Python
+
+Enrich commits with external data:
+
+```python
+import json
+import requests
+
+# Load context
+with open('context.json', 'r') as f:
+    context = json.load(f)
+
+# Enrich commits with JIRA data
+for release in context['releases']:
+    for commit in release['commits']:
+        # Extract JIRA ticket from commit message
+        if match := re.search(r'(PROJ-\d+)', commit['message']):
+            ticket = match.group(1)
+            
+            # Fetch JIRA data (example)
+            jira_data = requests.get(f'https://jira.example.com/api/ticket/{ticket}').json()
+            
+            # Add to extra field
+            commit['extra'] = {
+                'jira_ticket': ticket,
+                'jira_priority': jira_data['priority'],
+                'jira_status': jira_data['status']
+            }
+
+# Save modified context
+with open('enriched.json', 'w') as f:
+    json.dump(context, f, indent=2)
+```
+
+Generate changelog:
+
+```bash
+python enrich_context.py
+git cliff --from-context enriched.json -o CHANGELOG.md
+```
+
+### Process with Node.js
+
+Group commits by custom criteria:
+
+```javascript
+const fs = require('fs');
+
+// Load context
+const context = JSON.parse(fs.readFileSync('context.json', 'utf8'));
+
+// Regroup commits by file path
+for (const release of context.releases) {
+  for (const commit of release.commits) {
+    // Determine group based on custom logic
+    if (commit.message.includes('API')) {
+      commit.group = 'API Changes';
+    } else if (commit.message.includes('UI')) {
+      commit.group = 'UI Changes';
+    } else {
+      commit.group = 'Other Changes';
+    }
+  }
+}
+
+// Save modified context
+fs.writeFileSync('regrouped.json', JSON.stringify(context, null, 2));
+```
+
+## Advanced use cases
+
+### Multi-language changelogs
+
+Generate changelogs in multiple languages:
+
+```bash
+# Export context once
+git cliff --context -o context.json
+
+# Generate English changelog
+git cliff --from-context context.json --config cliff-en.toml -o CHANGELOG-EN.md
+
+# Generate Japanese changelog (with translated templates)
+git cliff --from-context context.json --config cliff-ja.toml -o CHANGELOG-JA.md
+```
+
+### Changelog aggregation
+
+Combine changelogs from multiple repositories:
+
+```bash
+# Export context from each repo
+cd repo1 && git cliff --context -o ../context1.json
+cd ../repo2 && git cliff --context -o ../context2.json
+
+# Merge contexts with jq
+jq -s '{releases: [.[].releases[]] | sort_by(.timestamp) | reverse}' context1.json context2.json > merged.json
+
+# Generate combined changelog
+git cliff --from-context merged.json -o COMBINED_CHANGELOG.md
+```
+
+### Conditional changelog sections
+
+Add context-based conditional rendering:
+
+```python
+import json
+
+with open('context.json', 'r') as f:
+    context = json.load(f)
+
+# Add release-level metadata
+for release in context['releases']:
+    # Check if release has breaking changes
+    has_breaking = any(c.get('breaking', False) for c in release['commits'])
+    
+    # Add to release extra data
+    release['extra'] = {
+        'has_breaking_changes': has_breaking,
+        'commit_count': len(release['commits']),
+        'migration_required': has_breaking
+    }
+
+with open('enhanced.json', 'w') as f:
+    json.dump(context, f, indent=2)
+```
+
+Use in template:
+
+```jinja2
+{% if release.extra.migration_required %}
+## Migration Guide
+This release contains breaking changes. Please review the changes carefully.
+{% endif %}
+```
+
+### External approval workflow
+
+Export, review, approve, and generate:
+
+```bash
+#!/bin/bash
+
+# 1. Export context
+git cliff --context -o context.json
+
+# 2. Upload for review (example using GitHub gist)
+gh gist create context.json --public
+
+# 3. Wait for approval (manual step)
+echo "Review the context and approve when ready"
+read -p "Press enter when approved..."
+
+# 4. Generate final changelog
+git cliff --from-context context.json -o CHANGELOG.md
+
+# 5. Commit and tag
+git add CHANGELOG.md
+git commit -m "chore: update changelog"
+git tag -a v1.0.0 -m "Release v1.0.0"
+```
+
+## Integration examples
+
+### GitHub Actions workflow
+
+```yaml
+name: Generate Changelog
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  changelog:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Install git-cliff
+        uses: orhun/git-cliff-action@v2
+      
+      - name: Export context
+        run: git cliff --context -o context.json
+      
+      - name: Enrich with PR data
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python scripts/enrich_context.py
+      
+      - name: Generate changelog
+        run: git cliff --from-context enriched.json -o CHANGELOG.md
+      
+      - name: Create release
+        uses: softprops/action-gh-release@v1
+        with:
+          body_path: CHANGELOG.md
+```
+
+### Pipeline with validation
+
+```bash
+#!/bin/bash
+set -e
+
+# Export context
+git cliff --context -o context.json
+
+# Validate context (ensure no sensitive data)
+python validate_context.py context.json
+
+# Transform context
+node transform_context.js
+
+# Generate changelog
+git cliff --from-context transformed.json -o CHANGELOG.md
+
+# Validate generated changelog
+markdownlint CHANGELOG.md
+
+echo "Changelog generated successfully!"
+```
+
+## Best practices
+
+1. **Validate context after modification:** Ensure your modifications produce valid JSON and maintain the expected structure.
+
+2. **Version control context files:** Track context files in your repository for reproducibility.
+
+3. **Use schema validation:** Validate context against a JSON schema before loading:
+
+```bash
+jsonschema -i context.json schema.json
+git cliff --from-context context.json -o CHANGELOG.md
+```
+
+4. **Keep transformations simple:** Complex transformations should be broken into smaller, testable steps.
+
+5. **Document custom fields:** If you add custom fields to `extra`, document what they mean and how they're used in templates.

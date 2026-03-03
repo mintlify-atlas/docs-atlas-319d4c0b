@@ -1,0 +1,303 @@
+---
+title: GitHub Integration
+description: Integrate git-cliff with GitHub to fetch pull request data, contributors, and labels
+---
+
+# GitHub Integration
+
+For projects hosted on GitHub, you can use git-cliff to add the following to your changelog:
+
+- GitHub usernames
+- Contributors list (all contributors / first time)
+- Pull request links (associated with commits)
+- PR titles and labels
+
+And simply generate the same changelog that you can typically generate from the GitHub interface.
+
+<Note>
+If you have built from source, enable the `github` feature flag for the integration to work.
+</Note>
+
+## Setting up the remote
+
+As default, remote upstream URL is automatically retrieved from the Git repository.
+
+If that doesn't work or if you want to set a custom remote, there are several ways to configure it:
+
+### Configuration file
+
+Use the `remote.github` section in your `cliff.toml`:
+
+```toml cliff.toml
+[remote.github]
+owner = "orhun"
+repo = "git-cliff"
+token = ""  # Leave empty to use environment variable
+```
+
+### Command line arguments
+
+Use the `--github-repo` argument (takes values in `OWNER/REPO` format):
+
+```bash
+git cliff --github-repo orhun/git-cliff
+```
+
+### Environment variables
+
+Use the `GITHUB_REPO` environment variable (same format as `--github-repo`):
+
+```bash
+GITHUB_REPO="orhun/git-cliff" git cliff
+```
+
+## Authentication
+
+<Steps>
+
+### Understanding rate limits
+
+[GitHub REST API](https://docs.github.com/en/rest) has a rate limit of **60 requests per hour** for unauthenticated users.
+
+Although this is enough for a couple of runs of git-cliff, it is recommended that you create an access token to increase the request limit to **5,000 requests per hour**.
+
+### Create a GitHub token
+
+Follow [this guide](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens) for creating an access token.
+
+The token can be either:
+- **Classic token** without any permissions (for public repos)
+- **Fine-grained token** without permissions (for public repos)
+- If you're running git-cliff in GitHub Actions, use `${{ secrets.GITHUB_TOKEN }}`
+
+### Set the token
+
+You can provide the access token in multiple ways:
+
+<CodeGroup>
+
+```bash Environment Variable (Recommended)
+GITHUB_TOKEN="ghp_your_token_here" git cliff --github-repo "orhun/git-cliff"
+```
+
+```bash Command Line Argument
+git cliff --github-token "ghp_your_token_here" --github-repo "orhun/git-cliff"
+```
+
+```toml Configuration File (Not Recommended)
+[remote.github]
+owner = "orhun"
+repo = "git-cliff"
+token = "ghp_your_token_here"  # Not recommended for security
+```
+
+```yaml GitHub Actions
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+run: |
+  git cliff --github-repo "${{ github.repository }}"
+```
+
+</CodeGroup>
+
+</Steps>
+
+## Advanced Configuration
+
+### Custom API URL
+
+You can use the `GITHUB_API_URL` environment variable to override the API URL. This is useful for GitHub Enterprise installations:
+
+```bash
+GITHUB_API_URL="https://github.company.com/api/v3" \
+GITHUB_TOKEN="your_token" \
+git cliff --github-repo "company/project"
+```
+
+### TLS Certificate Issues
+
+If you encounter invalid peer certificate errors, use the `--use-native-tls` flag to load certificates from the platform's native certificate store:
+
+```bash
+git cliff --github-repo "orhun/git-cliff" --use-native-tls
+```
+
+Or configure it in `cliff.toml`:
+
+```toml
+[remote.github]
+owner = "orhun"
+repo = "git-cliff"
+native_tls = true
+```
+
+## Template Variables
+
+### Remote metadata
+
+You can use the following context for adding the remote to the changelog:
+
+```json
+{
+  "github": {
+    "owner": "orhun",
+    "repo": "git-cliff"
+  }
+}
+```
+
+**Example template:**
+
+```jinja
+https://github.com/{{ remote.github.owner }}/{{ remote.github.repo }}/compare/{{ previous.version }}...{{ version }}
+```
+
+### Commit authors and PR data
+
+For each commit, GitHub-related values are added as a nested `remote` object:
+
+```json
+{
+  "id": "8edec7fd50f703811d55f14a3c5f0fd02b43d9e7",
+  "message": "refactor(config): remove unnecessary newline from configs\n",
+  "group": "🚜 Refactor",
+  "remote": {
+    "username": "orhun",
+    "pr_title": "some things have changed",
+    "pr_number": 420,
+    "pr_labels": ["rust", "enhancement"],
+    "is_first_time": false
+  }
+}
+```
+
+**Example template:**
+
+```jinja
+{% for commit in commits %}
+  * {{ commit.message | split(pat="\n") | first | trim }}\
+    {% if commit.remote.username %} by @{{ commit.remote.username }}{%- endif %}\
+    {% if commit.remote.pr_number %} in #{{ commit.remote.pr_number }}{%- endif %}
+{%- endfor -%}
+```
+
+**Output:**
+
+```markdown
+- feat(commit): add merge_commit flag to the context by @orhun in #389
+- feat(args): set `CHANGELOG.md` as default missing value for output option by @sh-cho in #354
+```
+
+### Contributors list
+
+For each release, contributors data is added to the template context:
+
+```json
+{
+  "version": "v1.4.0",
+  "commits": [],
+  "github": {
+    "contributors": [
+      {
+        "username": "orhun",
+        "pr_title": "some things have changed",
+        "pr_number": 420,
+        "pr_labels": ["rust"],
+        "is_first_time": true
+      },
+      {
+        "username": "cliffjumper",
+        "pr_title": "I love jumping",
+        "pr_number": 999,
+        "pr_labels": ["enhancement"],
+        "is_first_time": true
+      }
+    ]
+  }
+}
+```
+
+**Example template for first-time contributors:**
+
+```jinja
+{% for contributor in github.contributors | filter(attribute="is_first_time", value=true) %}
+  * @{{ contributor.username }} made their first contribution in #{{ contributor.pr_number }}
+{%- endfor -%}
+```
+
+**Output:**
+
+```markdown
+- @orhun made their first contribution in #420
+- @cliffjumper made their first contribution in #999
+```
+
+### Group commits by PR labels
+
+You can organize changelog entries by pull request labels:
+
+```jinja
+{% for group, commits in commits | group_by(attribute="remote.pr_labels") %}
+### {{ group | upper }}
+{% for commit in commits %}
+- {{ commit.message | split(pat="\n") | first }} (#{{ commit.remote.pr_number }})
+{%- endfor %}
+{% endfor %}
+```
+
+## GitHub Changelog Example
+
+If you would like to create a changelog similar to GitHub's default format, you can use the built-in `github.toml` example:
+
+```bash
+git cliff -c github
+```
+
+This will generate a changelog such as:
+
+```markdown
+## What's Changed
+
+- feat(commit): add merge_commit flag to the context by @orhun in #389
+- test(fixture): add test fixture for bumping version by @orhun in #360
+
+## New Contributors
+
+- @someone made their first contribution in #360
+- @cliffjumper made their first contribution in #389
+
+<!-- generated by git-cliff -->
+```
+
+Alternatively, use `github-keepachangelog.toml` for a mix of GitHub and [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) formats:
+
+```bash
+git cliff -c github-keepachangelog
+```
+
+## Configuration Example
+
+Complete configuration example for a GitHub-hosted project:
+
+```toml cliff.toml
+[remote.github]
+owner = "orhun"
+repo = "git-cliff"
+# token = ""  # Use GITHUB_TOKEN environment variable instead
+
+[changelog]
+body = """
+{% for commit in commits %}
+  * {{ commit.message | split(pat="\n") | first | trim }}\
+    {% if commit.remote.username %} by @{{ commit.remote.username }}{%- endif %}\
+    {% if commit.remote.pr_number %} in #{{ commit.remote.pr_number }}{%- endif %}
+{% endfor %}
+
+{% if github.contributors | filter(attribute="is_first_time", value=true) %}
+## New Contributors
+{% for contributor in github.contributors | filter(attribute="is_first_time", value=true) %}
+  * @{{ contributor.username }} made their first contribution in #{{ contributor.pr_number }}
+{%- endfor %}
+{% endif %}
+"""
+```

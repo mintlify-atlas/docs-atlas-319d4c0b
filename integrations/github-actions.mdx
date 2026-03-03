@@ -1,0 +1,388 @@
+---
+title: GitHub Actions
+description: Integrate git-cliff into your GitHub Actions CI/CD workflows
+---
+
+git-cliff can be seamlessly integrated into GitHub Actions workflows to automate changelog generation, create releases, and keep your CHANGELOG.md file up to date.
+
+## Using the Official GitHub Action
+
+The easiest way to use git-cliff in GitHub Actions is through the official `git-cliff-action`.
+
+### Basic Usage
+
+<CodeGroup>
+```yaml Generate Changelog on Release
+name: Generate Changelog
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+jobs:
+  changelog:
+    name: Generate changelog
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate changelog
+        uses: orhun/git-cliff-action@main
+        with:
+          config: cliff.toml
+          args: --verbose
+        env:
+          OUTPUT: CHANGELOG.md
+```
+
+```yaml Generate Latest Release Notes
+name: Latest Release Notes
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+jobs:
+  release-notes:
+    name: Generate release notes
+    runs-on: ubuntu-latest
+    outputs:
+      release_body: ${{ steps.git-cliff.outputs.content }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate changelog for latest release
+        uses: orhun/git-cliff-action@main
+        id: git-cliff
+        with:
+          config: cliff.toml
+          args: -vv --latest --no-exec --github-repo ${{ github.repository }}
+```
+
+```yaml Update CHANGELOG on Push
+name: Update Changelog
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  changelog:
+    name: Update CHANGELOG.md
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate changelog
+        uses: orhun/git-cliff-action@main
+        with:
+          config: cliff.toml
+          args: --verbose
+        env:
+          OUTPUT: CHANGELOG.md
+
+      - name: Commit changelog
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add CHANGELOG.md
+          git diff --quiet && git diff --staged --quiet || (git commit -m "docs: update CHANGELOG.md" && git push)
+```
+</CodeGroup>
+
+## Complete Release Workflow
+
+This example from git-cliff's own CD workflow shows how to generate a changelog and use it in a GitHub Release:
+
+```yaml Complete CD Pipeline
+name: Continuous Deployment
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+jobs:
+  generate-changelog:
+    name: Generate changelog
+    runs-on: ubuntu-22.04
+    outputs:
+      release_body: ${{ steps.git-cliff.outputs.content }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate a changelog
+        uses: orhun/git-cliff-action@main
+        id: git-cliff
+        with:
+          config: cliff.toml
+          args: -vv --latest --no-exec --github-repo ${{ github.repository }}
+
+  publish-release:
+    name: Publish GitHub Release
+    needs: generate-changelog
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set release version
+        run: echo "RELEASE_VERSION=${GITHUB_REF:11}" >> $GITHUB_ENV
+
+      # Your build steps here...
+
+      - name: Create GitHub Release
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: your-artifact-*
+          file_glob: true
+          tag: ${{ github.ref }}
+          release_name: "Release v${{ env.RELEASE_VERSION }}"
+          body: "${{ needs.generate-changelog.outputs.release_body }}"
+```
+
+## Automated Changelog Updates
+
+Automatically commit and push changelog updates:
+
+<CodeGroup>
+```yaml Commit to Same Branch
+name: Auto Update Changelog
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  changelog:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate changelog
+        uses: orhun/git-cliff-action@main
+        with:
+          config: cliff.toml
+          args: --verbose
+        env:
+          OUTPUT: CHANGELOG.md
+
+      - name: Commit changes
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add CHANGELOG.md
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "docs: update CHANGELOG.md [skip ci]"
+            git push
+          fi
+```
+
+```yaml Create Pull Request
+name: Changelog Pull Request
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  changelog:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate changelog
+        uses: orhun/git-cliff-action@main
+        with:
+          config: cliff.toml
+          args: --verbose
+        env:
+          OUTPUT: CHANGELOG.md
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v5
+        with:
+          commit-message: "docs: update CHANGELOG.md"
+          title: "Update CHANGELOG.md"
+          body: "Automated changelog update"
+          branch: changelog-update
+          delete-branch: true
+```
+</CodeGroup>
+
+## Using Docker in GitHub Actions
+
+You can also use the git-cliff Docker image directly:
+
+```yaml Using Docker Image
+name: Generate Changelog with Docker
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+jobs:
+  changelog:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate changelog
+        run: |
+          docker run --rm -v "$PWD:/app" orhunp/git-cliff:latest \
+            --config cliff.toml \
+            --output CHANGELOG.md \
+            --verbose
+
+      - name: Display changelog
+        run: cat CHANGELOG.md
+```
+
+## Action Inputs
+
+The `git-cliff-action` supports the following inputs:
+
+| Input | Description | Required | Default |
+|-------|-------------|----------|--------|
+| `config` | Path to configuration file | No | `cliff.toml` |
+| `args` | Arguments to pass to git-cliff | No | `""` |
+
+## Action Outputs
+
+The action provides the following outputs:
+
+| Output | Description |
+|--------|-------------|
+| `content` | Generated changelog content |
+| `version` | Version number extracted from the tag |
+
+## Environment Variables
+
+You can configure git-cliff using environment variables:
+
+| Variable | Description |
+|----------|-------------|
+| `OUTPUT` | Output file path (e.g., `CHANGELOG.md`) |
+| `GITHUB_TOKEN` | Automatically provided by GitHub Actions |
+
+## Common Patterns
+
+### Generate Changelog for Specific Range
+
+```yaml
+- name: Generate changelog for range
+  uses: orhun/git-cliff-action@main
+  with:
+    config: cliff.toml
+    args: v1.0.0..v2.0.0
+```
+
+### Include Unreleased Changes
+
+```yaml
+- name: Generate changelog with unreleased
+  uses: orhun/git-cliff-action@main
+  with:
+    config: cliff.toml
+    args: --unreleased --tag v1.0.0
+```
+
+### Bump Version
+
+```yaml
+- name: Bump version and generate changelog
+  uses: orhun/git-cliff-action@main
+  with:
+    config: cliff.toml
+    args: --bump --unreleased
+```
+
+## Permissions
+
+Depending on your workflow, you may need to configure permissions:
+
+```yaml
+permissions:
+  contents: write      # Required to push commits
+  pull-requests: write # Required to create PRs
+```
+
+## Tips and Best Practices
+
+<Tip>
+Always use `fetch-depth: 0` when checking out to ensure all git history is available for changelog generation.
+</Tip>
+
+<Warning>
+When committing changelog updates automatically, use `[skip ci]` in the commit message to avoid triggering infinite workflow loops.
+</Warning>
+
+<Note>
+The `--no-exec` flag prevents git-cliff from executing commands in the template, which is recommended in CI environments.
+</Note>
+
+## Troubleshooting
+
+### Permission Denied When Pushing
+
+Make sure your workflow has the `contents: write` permission:
+
+```yaml
+permissions:
+  contents: write
+```
+
+### Empty Changelog Generated
+
+Ensure you're fetching the full git history:
+
+```yaml
+- uses: actions/checkout@v4
+  with:
+    fetch-depth: 0  # Important!
+```
+
+### Action Not Finding Config File
+
+Specify the full path to your config file:
+
+```yaml
+with:
+  config: ./config/cliff.toml
+```

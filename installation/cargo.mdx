@@ -1,0 +1,225 @@
+---
+title: Install via Cargo
+description: Install git-cliff from crates.io using Rust's package manager
+---
+
+# Install via Cargo
+
+Install git-cliff from [crates.io](https://crates.io/crates/git-cliff) using Cargo, Rust's package manager.
+
+## Prerequisites
+
+<Note>
+  Minimum supported Rust version: **1.85.1**
+</Note>
+
+Ensure you have Rust and Cargo installed:
+
+```bash
+rustc --version
+cargo --version
+```
+
+If not installed, get Rust from [rustup.rs](https://rustup.rs/).
+
+## Installation
+
+<Steps>
+  <Step title="Install from crates.io">
+    Install the latest stable version:
+    
+    ```bash
+    cargo install git-cliff
+    ```
+    
+    This will download, compile, and install git-cliff with all default features enabled.
+  </Step>
+  
+  <Step title="Verify installation">
+    Check that git-cliff is installed correctly:
+    
+    ```bash
+    git-cliff --version
+    ```
+    
+    Expected output:
+    ```
+    git-cliff 2.7.0
+    ```
+  </Step>
+  
+  <Step title="Test the installation">
+    Run git-cliff in a git repository:
+    
+    ```bash
+    cd /path/to/your/git/repo
+    git-cliff --help
+    ```
+  </Step>
+</Steps>
+
+## Advanced Installation
+
+<Tabs>
+  <Tab title="Latest Git Version">
+    Install the bleeding-edge version from the main branch:
+    
+    ```bash
+    cargo install --git https://github.com/orhun/git-cliff
+    ```
+    
+    <Warning>
+      The git version may contain unreleased features and potential bugs.
+    </Warning>
+  </Tab>
+  
+  <Tab title="Custom Features">
+    git-cliff supports several feature flags:
+    
+    | Feature | Description |
+    |---------|-------------|
+    | `update-informer` | Notifies about new releases |
+    | `github` | Enables GitHub integration |
+    | `gitlab` | Enables GitLab integration |
+    | `gitea` | Enables Gitea integration |
+    | `bitbucket` | Enables Bitbucket integration |
+    | `integrations` | Enables all integrations |
+    
+    All features are enabled by default.
+    
+    ### Install without default features
+    
+    ```bash
+    cargo install git-cliff --no-default-features
+    ```
+    
+    ### Install with specific features
+    
+    Enable only the update notifier:
+    ```bash
+    cargo install git-cliff --no-default-features --features update-informer
+    ```
+    
+    Enable GitHub integration only:
+    ```bash
+    cargo install git-cliff --no-default-features --features github
+    ```
+    
+    Enable multiple features:
+    ```bash
+    cargo install git-cliff --no-default-features --features "github,gitlab,update-informer"
+    ```
+  </Tab>
+  
+  <Tab title="Specific Version">
+    Install a specific version:
+    
+    ```bash
+    cargo install git-cliff --version 2.7.0
+    ```
+  </Tab>
+  
+  <Tab title="Force Reinstall">
+    Force reinstall to update or fix installation:
+    
+    ```bash
+    cargo install git-cliff --force
+    ```
+  </Tab>
+</Tabs>
+
+## Updating
+
+Update to the latest version:
+
+```bash
+cargo install git-cliff --force
+```
+
+Or use [cargo-update](https://crates.io/crates/cargo-update):
+
+```bash
+cargo install cargo-update
+cargo install-update git-cliff
+```
+
+## Uninstalling
+
+Remove git-cliff:
+
+```bash
+cargo uninstall git-cliff
+```
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Compilation fails with linker errors">
+    Ensure you have the necessary build tools:
+    
+    **Linux (Debian/Ubuntu):**
+    ```bash
+    sudo apt-get install build-essential pkg-config libssl-dev
+    ```
+    
+    **Linux (Fedora):**
+    ```bash
+    sudo dnf install gcc pkg-config openssl-devel
+    ```
+    
+    **macOS:**
+    ```bash
+    xcode-select --install
+    ```
+  </Accordion>
+  
+  <Accordion title="Binary not found after installation">
+    Cargo installs binaries to `~/.cargo/bin/`. Ensure this is in your PATH:
+    
+    **Bash/Zsh:**
+    ```bash
+    echo 'export PATH="$HOME/.cargo/bin:$PATH"' >> ~/.bashrc
+    source ~/.bashrc
+    ```
+    
+    **Fish:**
+    ```bash
+    set -U fish_user_paths $HOME/.cargo/bin $fish_user_paths
+    ```
+  </Accordion>
+  
+  <Accordion title="Rust version too old">
+    Update Rust to the minimum supported version:
+    
+    ```bash
+    rustup update stable
+    ```
+    
+    Check your Rust version:
+    ```bash
+    rustc --version
+    ```
+  </Accordion>
+  
+  <Accordion title="Installation is too slow">
+    Speed up compilation by using more CPU cores:
+    
+    ```bash
+    cargo install git-cliff -j $(nproc)
+    ```
+    
+    Or use a pre-compiled binary from the [binary installation method](/installation/binary).
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Configuration" icon="gear" href="/configuration/overview">
+    Learn how to configure git-cliff
+  </Card>
+  
+  <Card title="Usage Examples" icon="book" href="/usage/basic-usage">
+    See practical examples
+  </Card>
+</CardGroup>

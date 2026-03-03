@@ -1,0 +1,304 @@
+---
+title: GitLab Integration
+description: Integrate git-cliff with GitLab to fetch merge request data, contributors, and labels
+---
+
+# GitLab Integration
+
+For projects hosted on GitLab, you can use git-cliff to add the following to your changelog:
+
+- GitLab usernames
+- Contributors list (all contributors / first time)
+- Merge request links (associated with commits)
+- MR titles and labels
+
+<Note>
+If you have built from source, enable the `gitlab` feature flag for the integration to work.
+</Note>
+
+## Setting up the remote
+
+As default, remote upstream URL is automatically retrieved from the Git repository.
+
+If that doesn't work or if you want to set a custom remote, there are several ways to configure it:
+
+### Configuration file
+
+Use the `remote.gitlab` section in your `cliff.toml`:
+
+```toml cliff.toml
+[remote.gitlab]
+owner = "orhun"
+repo = "git-cliff"
+token = ""  # Leave empty to use environment variable
+```
+
+### Command line arguments
+
+Use the `--gitlab-repo` argument (takes values in `OWNER/REPO` format):
+
+```bash
+git cliff --gitlab-repo orhun/git-cliff
+```
+
+### Environment variables
+
+Use the `GITLAB_REPO` environment variable (same format as `--gitlab-repo`):
+
+```bash
+GITLAB_REPO="orhun/git-cliff" git cliff
+```
+
+## Authentication
+
+<Steps>
+
+### Understanding rate limits
+
+[GitLab REST API](https://docs.gitlab.com/ee/api/rest/) is used to retrieve data from GitLab. GitLab has [rate limiting](https://docs.gitlab.com/ee/security/rate_limits.html) rules that vary based on your plan and authentication status.
+
+### Create a GitLab token
+
+Follow [this guide](https://docs.gitlab.com/ee/user/profile/personal_access_tokens.html) for creating a personal access token.
+
+The token needs:
+- **read_api** scope for reading repository data
+- Or **read_repository** scope for public projects
+
+### Set the token
+
+You can provide the access token in multiple ways:
+
+<CodeGroup>
+
+```bash Environment Variable (Recommended)
+GITLAB_TOKEN="glpat-your_token_here" git cliff --gitlab-repo "orhun/git-cliff"
+```
+
+```bash Command Line Argument
+git cliff --gitlab-token "glpat-your_token_here" --gitlab-repo "orhun/git-cliff"
+```
+
+```toml Configuration File (Not Recommended)
+[remote.gitlab]
+owner = "orhun"
+repo = "git-cliff"
+token = "glpat-your_token_here"  # Not recommended for security
+```
+
+```yaml GitLab CI
+env:
+  GITLAB_TOKEN: $CI_JOB_TOKEN  # Or use a project/group access token
+script:
+  - git cliff --gitlab-repo "$CI_PROJECT_PATH"
+```
+
+</CodeGroup>
+
+</Steps>
+
+## Advanced Configuration
+
+### Custom API URL
+
+You can use the `GITLAB_API_URL` environment variable to override the API URL. This is useful for self-hosted GitLab instances:
+
+```bash
+GITLAB_API_URL="https://gitlab.company.com/api/v4" \
+GITLAB_TOKEN="your_token" \
+git cliff --gitlab-repo "company/project"
+```
+
+<Note>
+When your project has subgroups (e.g., `gitlab.com/myGroup/mySubgroup/myProject`), you don't need to URL-encode the owner in the configuration. Simply use `"myGroup/mySubgroup"`.
+</Note>
+
+### TLS Certificate Issues
+
+If you encounter invalid peer certificate errors, use the `--use-native-tls` flag to load certificates from the platform's native certificate store:
+
+```bash
+git cliff --gitlab-repo "orhun/git-cliff" --use-native-tls
+```
+
+Or configure it in `cliff.toml`:
+
+```toml
+[remote.gitlab]
+owner = "orhun"
+repo = "git-cliff"
+native_tls = true
+```
+
+## Template Variables
+
+### Remote metadata
+
+You can use the following context for adding the remote to the changelog:
+
+```json
+{
+  "gitlab": {
+    "owner": "orhun",
+    "repo": "git-cliff"
+  }
+}
+```
+
+**Example template:**
+
+```jinja
+https://gitlab.com/{{ remote.gitlab.owner }}/{{ remote.gitlab.repo }}/-/tags/{{ version }}
+```
+
+**GitLab CI alternative:**
+
+If you are using GitLab CI, you can use the `CI_PROJECT_URL` predefined variable:
+
+```jinja
+{{ get_env(name="CI_PROJECT_URL") }}/-/tags/{{ version }}
+```
+
+### Commit authors and MR data
+
+For each commit, GitLab-related values are added as a nested `remote` object:
+
+```json
+{
+  "id": "8edec7fd50f703811d55f14a3c5f0fd02b43d9e7",
+  "message": "refactor(config): remove unnecessary newline from configs\n",
+  "group": "🚜 Refactor",
+  "remote": {
+    "username": "orhun",
+    "pr_title": "some things have changed",
+    "pr_number": 420,
+    "pr_labels": ["rust", "enhancement"],
+    "is_first_time": false
+  }
+}
+```
+
+**Example template:**
+
+```jinja
+{% for commit in commits %}
+  * {{ commit.message | split(pat="\n") | first | trim }}\
+    {% if commit.remote.username %} by @{{ commit.remote.username }}{%- endif %}\
+    {% if commit.remote.pr_number %} in !{{ commit.remote.pr_number }}{%- endif %}
+{%- endfor -%}
+```
+
+<Note>
+GitLab uses `!` for merge requests instead of GitHub's `#` for pull requests.
+</Note>
+
+**Output:**
+
+```markdown
+- feat(commit): add merge_commit flag to the context by @orhun in !389
+- feat(args): set `CHANGELOG.md` as default missing value for output option by @sh-cho in !354
+```
+
+### Contributors list
+
+For each release, contributors data is added to the template context:
+
+```json
+{
+  "version": "v1.4.0",
+  "commits": [],
+  "gitlab": {
+    "contributors": [
+      {
+        "username": "orhun",
+        "pr_title": "some things have changed",
+        "pr_number": 420,
+        "pr_labels": ["rust"],
+        "is_first_time": true
+      },
+      {
+        "username": "cliffjumper",
+        "pr_title": "I love jumping",
+        "pr_number": 999,
+        "pr_labels": ["enhancement"],
+        "is_first_time": true
+      }
+    ]
+  }
+}
+```
+
+**Example template for first-time contributors:**
+
+```jinja
+{% for contributor in gitlab.contributors | filter(attribute="is_first_time", value=true) %}
+  * @{{ contributor.username }} made their first contribution in !{{ contributor.pr_number }}
+{%- endfor -%}
+```
+
+**Output:**
+
+```markdown
+- @orhun made their first contribution in !420
+- @cliffjumper made their first contribution in !999
+```
+
+### Group commits by MR labels
+
+You can organize changelog entries by merge request labels:
+
+```jinja
+{% for group, commits in commits | group_by(attribute="remote.pr_labels") %}
+### {{ group | upper }}
+{% for commit in commits %}
+- {{ commit.message | split(pat="\n") | first }} (!{{ commit.remote.pr_number }})
+{%- endfor %}
+{% endfor %}
+```
+
+## Configuration Example
+
+Complete configuration example for a GitLab-hosted project:
+
+```toml cliff.toml
+[remote.gitlab]
+owner = "archlinux"
+repo = "arch-repro-status"
+api_url = "https://gitlab.archlinux.org/api/v4"  # Optional: for self-hosted
+# token = ""  # Use GITLAB_TOKEN environment variable instead
+
+[changelog]
+body = """
+{% for commit in commits %}
+  * {{ commit.message | split(pat="\n") | first | trim }}\
+    {% if commit.remote.username %} by @{{ commit.remote.username }}{%- endif %}\
+    {% if commit.remote.pr_number %} in !{{ commit.remote.pr_number }}{%- endif %}
+{% endfor %}
+
+{% if gitlab.contributors | filter(attribute="is_first_time", value=true) %}
+## New Contributors
+{% for contributor in gitlab.contributors | filter(attribute="is_first_time", value=true) %}
+  * @{{ contributor.username }} made their first contribution in !{{ contributor.pr_number }}
+{%- endfor %}
+{% endif %}
+"""
+```
+
+## GitLab CI Integration
+
+Example `.gitlab-ci.yml` configuration:
+
+```yaml .gitlab-ci.yml
+generate-changelog:
+  stage: release
+  image: orhunp/git-cliff:latest
+  script:
+    - git cliff --gitlab-repo "$CI_PROJECT_PATH" -o CHANGELOG.md
+  variables:
+    GITLAB_TOKEN: $CI_JOB_TOKEN
+  artifacts:
+    paths:
+      - CHANGELOG.md
+  only:
+    - tags
+```

@@ -1,0 +1,442 @@
+---
+title: Template Context
+description: Available variables and data structures in git-cliff templates
+---
+
+# Template Context
+
+The template context contains all the data available to your templates. This page documents the structure of the context and all available variables.
+
+## Release Context
+
+Each time the `body` template is rendered, it receives a release context:
+
+<ParamField path="version" type="string">
+  The release version (e.g., `v1.0.0`). `null` for unreleased changes.
+</ParamField>
+
+<ParamField path="message" type="string">
+  The annotated tag message for the release.
+</ParamField>
+
+<ParamField path="commit_id" type="string">
+  The commit ID of the release commit (e.g., `a440c6eb26404be4877b7e3ad592bfaa5d4eb210`).
+</ParamField>
+
+<ParamField path="timestamp" type="integer">
+  Unix timestamp of the release (e.g., `1625169301`).
+  
+  **Usage:**
+  ```jinja
+  {{ timestamp | date(format="%Y-%m-%d") }}
+  ```
+</ParamField>
+
+<ParamField path="repository" type="string">
+  Path to the Git repository (e.g., `/path/to/repository`).
+</ParamField>
+
+<ParamField path="commits" type="array">
+  Array of commit objects in this release. See [Commit Object](#commit-object) below.
+</ParamField>
+
+<ParamField path="commit_range" type="object">
+  Range of commits in this release.
+  
+  ```json
+  {
+    "from": "(id of the first commit)",
+    "to": "(id of the last commit)"
+  }
+  ```
+</ParamField>
+
+<ParamField path="previous" type="object">
+  Information about the previous release.
+  
+  ```json
+  {
+    "version": "v0.9.0"
+  }
+  ```
+</ParamField>
+
+<ParamField path="statistics" type="object">
+  Release statistics. See [Statistics Object](#statistics-object) below.
+</ParamField>
+
+## Commit Object
+
+The structure of a commit depends on whether `conventional_commits` is enabled.
+
+### With Conventional Commits
+
+When `conventional_commits = true`:
+
+<ParamField path="id" type="string">
+  Full commit SHA (e.g., `e795460c9bb7275294d1fa53a9d73258fb51eb10`).
+</ParamField>
+
+<ParamField path="group" type="string">
+  Commit group assigned by `commit_parsers` (e.g., `Features`, `Bug Fixes`).
+</ParamField>
+
+<ParamField path="scope" type="string">
+  Commit scope from conventional commit format (e.g., `api`, `auth`).
+  
+  **Example:** For `feat(api): add endpoint`, scope is `api`.
+</ParamField>
+
+<ParamField path="message" type="string">
+  Commit description (the text after the type and scope).
+  
+  **Example:** For `feat(api): add endpoint`, message is `add endpoint`.
+</ParamField>
+
+<ParamField path="body" type="string">
+  Commit body (text between description and footers).
+</ParamField>
+
+<ParamField path="footers" type="array">
+  Array of footer objects. See [Footers](#footers) below.
+</ParamField>
+
+<ParamField path="breaking" type="boolean">
+  `true` if commit is a breaking change.
+  
+  Set by:
+  - Exclamation mark: `feat!: breaking change`
+  - Footer: `BREAKING CHANGE: description`
+</ParamField>
+
+<ParamField path="breaking_description" type="string">
+  Description of the breaking change from `BREAKING CHANGE` footer or commit message.
+</ParamField>
+
+<ParamField path="conventional" type="boolean">
+  `true` if commit follows conventional commits format.
+</ParamField>
+
+<ParamField path="merge_commit" type="boolean">
+  `true` if commit is a merge commit.
+</ParamField>
+
+<ParamField path="links" type="array">
+  Array of link objects extracted by `link_parsers`.
+  
+  ```json
+  [
+    {
+      "text": "#123",
+      "href": "https://github.com/owner/repo/issues/123"
+    }
+  ]
+  ```
+</ParamField>
+
+<ParamField path="author" type="object">
+  Commit author information.
+  
+  ```json
+  {
+    "name": "User Name",
+    "email": "user.email@example.com",
+    "timestamp": 1660330071
+  }
+  ```
+</ParamField>
+
+<ParamField path="committer" type="object">
+  Commit committer information (same structure as `author`).
+  
+  <Note>
+  The **author** is who originally wrote the code. The **committer** is who applied the commit. These differ when applying patches or merging pull requests.
+  </Note>
+</ParamField>
+
+<ParamField path="raw_message" type="string">
+  Full, unprocessed commit message.
+</ParamField>
+
+### Without Conventional Commits
+
+When `conventional_commits = false`:
+
+<ParamField path="id" type="string">
+  Full commit SHA.
+</ParamField>
+
+<ParamField path="group" type="string">
+  Commit group (assigned by `commit_parsers`).
+</ParamField>
+
+<ParamField path="scope" type="string">
+  Commit scope (can be set by `commit_parsers`).
+</ParamField>
+
+<ParamField path="message" type="string">
+  Full commit message (not parsed into parts).
+</ParamField>
+
+<ParamField path="conventional" type="boolean">
+  Always `false`.
+</ParamField>
+
+<ParamField path="merge_commit" type="boolean">
+  `true` if commit is a merge commit.
+</ParamField>
+
+<ParamField path="links" type="array">
+  Array of link objects (same as conventional mode).
+</ParamField>
+
+<ParamField path="author" type="object">
+  Commit author information.
+</ParamField>
+
+<ParamField path="committer" type="object">
+  Commit committer information.
+</ParamField>
+
+<ParamField path="raw_message" type="string">
+  Full commit message (same as `message` in this mode).
+</ParamField>
+
+## Footers
+
+Conventional commits can contain structured footers:
+
+```
+feat: add new feature
+
+Signed-off-by: User Name <user@example.com>
+Reviewed-by: Reviewer <reviewer@example.com>
+Fixes #1234
+BREAKING CHANGE: API endpoint changed
+```
+
+Each footer is represented as:
+
+<ParamField path="token" type="string">
+  Footer name (e.g., `Signed-off-by`, `BREAKING CHANGE`).
+</ParamField>
+
+<ParamField path="separator" type="string">
+  Separator between token and value (`: ` or ` #`).
+</ParamField>
+
+<ParamField path="value" type="string">
+  Footer value (text after the separator).
+</ParamField>
+
+<ParamField path="breaking" type="boolean">
+  `true` if this is a `BREAKING CHANGE` footer.
+</ParamField>
+
+**Template example:**
+
+```jinja
+{% if commit.footers %}
+  {% for footer in commit.footers %}
+    {{ footer.token }}{{ footer.separator }}{{ footer.value }}
+  {% endfor %}
+{% endif %}
+```
+
+## Statistics Object
+
+The `statistics` object provides release metrics:
+
+<ParamField path="commit_count" type="integer">
+  Total number of commits in the release.
+</ParamField>
+
+<ParamField path="commits_timespan" type="integer">
+  Number of days between the first and last commit.
+</ParamField>
+
+<ParamField path="conventional_commit_count" type="integer">
+  Number of commits following conventional commits format.
+</ParamField>
+
+<ParamField path="links" type="array">
+  Aggregated links from all commits with occurrence counts.
+  
+  ```json
+  [
+    {
+      "text": "#452",
+      "href": "https://github.com/owner/repo/issues/452",
+      "count": 3
+    }
+  ]
+  ```
+</ParamField>
+
+<ParamField path="days_passed_since_last_release" type="integer">
+  Days between this release and the previous release.
+</ParamField>
+
+**Template example:**
+
+```jinja
+### Commit Statistics
+
+- {{ statistics.commit_count }} commit(s) contributed to the release.
+- {{ statistics.commits_timespan | default(value=0) }} day(s) passed between the first and last commit.
+- {{ statistics.conventional_commit_count }} commit(s) parsed as conventional.
+- {{ statistics.links | length }} linked issue(s) detected in commits.
+{%- if statistics.links | length > 0 %}
+  {%- for link in statistics.links %}
+    - [{{ link.text }}]({{ link.href }}) (referenced {{ link.count }} time(s))
+  {%- endfor %}
+{%- endif %}
+{%- if statistics.days_passed_since_last_release %}
+  - {{ statistics.days_passed_since_last_release }} day(s) passed between releases.
+{%- endif %}
+```
+
+## Remote Context
+
+When using remote integrations (GitHub, GitLab, etc.), additional context is available:
+
+<ParamField path="remote.github" type="object">
+  GitHub integration context.
+  
+  ```json
+  {
+    "owner": "orhun",
+    "repo": "git-cliff"
+  }
+  ```
+  
+  **Usage:**
+  ```jinja
+  https://github.com/{{ remote.github.owner }}/{{ remote.github.repo }}
+  ```
+</ParamField>
+
+<ParamField path="github.contributors" type="array">
+  GitHub contributor information (when GitHub integration is enabled).
+  
+  ```json
+  [
+    {
+      "username": "octocat",
+      "pr_number": 123,
+      "is_first_time": true
+    }
+  ]
+  ```
+  
+  **Template example:**
+  ```jinja
+  {% if github.contributors | filter(attribute="is_first_time", value=true) | length != 0 %}
+    ## New Contributors ❤️
+  {% endif %}
+  {% for contributor in github.contributors | filter(attribute="is_first_time", value=true) %}
+    * @{{ contributor.username }} made their first contribution
+      {%- if contributor.pr_number %} in \
+        [#{{ contributor.pr_number }}](https://github.com/{{ remote.github.owner }}/{{ remote.github.repo }}/pull/{{ contributor.pr_number }}) \
+      {%- endif %}
+  {%- endfor %}
+  ```
+</ParamField>
+
+See the [GitHub integration](/integrations/github) documentation for more details.
+
+## Footer Context (releases array)
+
+The `footer` template has access to the `releases` array containing all releases:
+
+```jinja
+{% for release in releases %}
+  {% if release.version %}
+    {% if release.previous.version %}
+      [{{ release.version | trim_start_matches(pat="v") }}]: \
+        https://github.com/{{ remote.github.owner }}/{{ remote.github.repo }}\
+          /compare/{{ release.previous.version }}..{{ release.version }}
+    {% endif %}
+  {% else %}
+    [unreleased]: https://github.com/{{ remote.github.owner }}/{{ remote.github.repo }}\
+      /compare/{{ release.previous.version }}..HEAD
+  {% endif %}
+{% endfor %}
+```
+
+## Example: Complete Context
+
+Here's what a complete release context looks like:
+
+```json
+{
+  "version": "v1.0.0",
+  "message": "Release version 1.0.0",
+  "commit_id": "a440c6eb26404be4877b7e3ad592bfaa5d4eb210",
+  "timestamp": 1625169301,
+  "repository": "/path/to/repository",
+  "commits": [
+    {
+      "id": "e795460c9bb7275294d1fa53a9d73258fb51eb10",
+      "group": "Features",
+      "scope": "api",
+      "message": "add user authentication",
+      "body": "Implemented JWT-based authentication for API endpoints.",
+      "footers": [
+        {
+          "token": "Reviewed-by",
+          "separator": ": ",
+          "value": "Jane Doe <jane@example.com>",
+          "breaking": false
+        }
+      ],
+      "breaking": false,
+      "breaking_description": null,
+      "conventional": true,
+      "merge_commit": false,
+      "links": [
+        {
+          "text": "#123",
+          "href": "https://github.com/owner/repo/issues/123"
+        }
+      ],
+      "author": {
+        "name": "John Doe",
+        "email": "john@example.com",
+        "timestamp": 1660330071
+      },
+      "committer": {
+        "name": "John Doe",
+        "email": "john@example.com",
+        "timestamp": 1660330071
+      },
+      "raw_message": "feat(api): add user authentication\n\nImplemented JWT-based authentication for API endpoints.\n\nReviewed-by: Jane Doe <jane@example.com>"
+    }
+  ],
+  "commit_range": {
+    "from": "81fbc6365484abf0b4f4b05d384175763ad8db44",
+    "to": "a440c6eb26404be4877b7e3ad592bfaa5d4eb210"
+  },
+  "statistics": {
+    "commit_count": 15,
+    "commits_timespan": 7,
+    "conventional_commit_count": 14,
+    "links": [
+      {
+        "text": "#123",
+        "href": "https://github.com/owner/repo/issues/123",
+        "count": 2
+      }
+    ],
+    "days_passed_since_last_release": 30
+  },
+  "previous": {
+    "version": "v0.9.0"
+  }
+}
+```
+
+## Next Steps
+
+- [Examples](/templating/examples) - See complete template configurations
+- [Syntax](/templating/syntax) - Learn Tera syntax and filters

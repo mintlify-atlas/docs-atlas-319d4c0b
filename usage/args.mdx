@@ -1,0 +1,707 @@
+---
+title: Command-Line Arguments
+description: Complete reference for all git-cliff CLI arguments and options
+---
+
+Complete command-line reference for git-cliff. All options can also be set via environment variables or configuration files.
+
+## Usage
+
+```bash
+git-cliff [FLAGS] [OPTIONS] [--] [RANGE]
+```
+
+## Flags
+
+Flags are boolean options that don't take values.
+
+<ParamField path="-h, --help" type="flag">
+  Prints help information
+  
+  ```bash
+  git cliff --help
+  ```
+</ParamField>
+
+<ParamField path="-V, --version" type="flag">
+  Prints version information
+  
+  ```bash
+  git cliff --version
+  # Output: git-cliff 2.0.0
+  ```
+</ParamField>
+
+<ParamField path="-v, --verbose" type="flag">
+  Increases the logging verbosity. Can be used multiple times for more verbose output.
+  
+  ```bash
+  # Basic verbosity
+  git cliff -v
+  
+  # More verbose
+  git cliff -vv
+  
+  # Maximum verbosity
+  git cliff -vvv
+  ```
+</ParamField>
+
+<ParamField path="-l, --latest" type="flag">
+  Processes the commits starting from the latest tag
+  
+  ```bash
+  git cliff --latest
+  ```
+  
+  Useful for generating changelog entries for only the most recent release.
+</ParamField>
+
+<ParamField path="--current" type="flag">
+  Processes the commits that belong to the current tag
+  
+  ```bash
+  git checkout v1.0.0
+  git cliff --current
+  ```
+  
+  Requires HEAD to be on a tagged commit.
+</ParamField>
+
+<ParamField path="-u, --unreleased" type="flag">
+  Processes the commits that do not belong to a tag
+  
+  ```bash
+  git cliff --unreleased
+  git cliff --unreleased --tag v2.0.0
+  ```
+  
+  Often combined with `--tag` to preview the next release.
+</ParamField>
+
+<ParamField path="--topo-order" type="flag">
+  Sorts the tags topologically instead of chronologically
+  
+  ```bash
+  git cliff --topo-order
+  ```
+  
+  Useful for repositories with complex branching strategies.
+</ParamField>
+
+<ParamField path="--use-branch-tags" type="flag">
+  Include only the tags that belong to the current branch
+  
+  ```bash
+  git cliff --use-branch-tags
+  ```
+  
+  Helpful when working with multiple release branches.
+</ParamField>
+
+<ParamField path="--no-exec" type="flag">
+  Disables the external command execution
+  
+  ```bash
+  git cliff --no-exec
+  ```
+  
+  Skips running preprocessors and postprocessors defined in configuration.
+</ParamField>
+
+<ParamField path="-x, --context" type="flag">
+  Prints changelog context as JSON
+  
+  ```bash
+  git cliff --context > changelog.json
+  ```
+  
+  Useful for processing changelog data with external tools.
+</ParamField>
+
+<ParamField path="--bumped-version" type="flag">
+  Prints bumped version for unreleased changes
+  
+  ```bash
+  VERSION=$(git cliff --bumped-version)
+  echo "Next version: $VERSION"
+  ```
+  
+  Calculates the next semantic version based on conventional commits.
+</ParamField>
+
+<ParamField path="--use-native-tls" type="flag">
+  Load TLS certificates from the native certificate store
+  
+  ```bash
+  git cliff --config-url https://example.com/cliff.toml --use-native-tls
+  ```
+  
+  Only available when compiled with the `remote` feature.
+</ParamField>
+
+## Configuration Options
+
+<ParamField path="-i, --init" type="string" default="cliff.toml">
+  Writes the default configuration file to `cliff.toml`. Optionally accepts a template name.
+  
+  ```bash
+  # Create default config
+  git cliff --init
+  
+  # Create with template
+  git cliff --init keepachangelog
+  
+  # Custom filename
+  git cliff --init --config custom.toml
+  ```
+  
+  Available templates: `keepachangelog`, `github`, `detailed`, `minimal`, `scoped`, `scopesorted`, `cocogitto`, `unconventional`
+</ParamField>
+
+<ParamField path="-c, --config" type="path" default="cliff.toml">
+  Sets the configuration file path
+  
+  **Environment variable:** `GIT_CLIFF_CONFIG`
+  
+  ```bash
+  git cliff --config custom.toml
+  git cliff -c configs/release.toml
+  
+  # Using environment variable
+  export GIT_CLIFF_CONFIG=custom.toml
+  git cliff
+  ```
+</ParamField>
+
+<ParamField path="--config-url" type="url">
+  Sets the URL for the configuration file
+  
+  **Environment variable:** `GIT_CLIFF_CONFIG_URL`
+  
+  ```bash
+  git cliff --config-url https://example.com/cliff.toml
+  ```
+  
+  Only available when compiled with the `remote` feature.
+</ParamField>
+
+## Repository Options
+
+<ParamField path="-w, --workdir" type="path">
+  Sets the working directory
+  
+  **Environment variable:** `GIT_CLIFF_WORKDIR`
+  
+  ```bash
+  git cliff --workdir /path/to/repo
+  ```
+</ParamField>
+
+<ParamField path="-r, --repository" type="path[]">
+  Sets the git repository path(s). Accepts multiple paths.
+  
+  **Environment variable:** `GIT_CLIFF_REPOSITORY`
+  
+  ```bash
+  # Single repository
+  git cliff --repository /path/to/repo
+  
+  # Multiple repositories (merged history)
+  git cliff --repository /path/to/repo1 /path/to/repo2
+  ```
+</ParamField>
+
+## Filtering Options
+
+<ParamField path="--include-path" type="pattern[]">
+  Sets the path pattern to include related commits. Accepts glob patterns.
+  
+  **Environment variable:** `GIT_CLIFF_INCLUDE_PATH`
+  
+  ```bash
+  # Include specific directory
+  git cliff --include-path "src/api/**/*"
+  
+  # Multiple patterns
+  git cliff --include-path "src/**/*" --include-path "lib/**/*"
+  ```
+  
+  Paths must be relative to the repository root.
+</ParamField>
+
+<ParamField path="--exclude-path" type="pattern[]">
+  Sets the path pattern to exclude related commits. Accepts glob patterns.
+  
+  **Environment variable:** `GIT_CLIFF_EXCLUDE_PATH`
+  
+  ```bash
+  # Exclude specific directory
+  git cliff --exclude-path "docs/**/*"
+  
+  # Exclude multiple patterns
+  git cliff --exclude-path "*.md" --exclude-path "tests/**/*"
+  ```
+</ParamField>
+
+<ParamField path="--tag-pattern" type="regex">
+  Sets the regex pattern for matching git tags
+  
+  **Environment variable:** `GIT_CLIFF_TAG_PATTERN`
+  
+  ```bash
+  # Only match version tags
+  git cliff --tag-pattern "v[0-9]+\.[0-9]+\.[0-9]+"
+  
+  # Match tags with prefix
+  git cliff --tag-pattern "release/.*"
+  ```
+</ParamField>
+
+<ParamField path="--skip-tags" type="regex">
+  Sets the regex pattern for tags to skip in the changelog
+  
+  **Environment variable:** `GIT_CLIFF_SKIP_TAGS`
+  
+  ```bash
+  # Skip beta releases
+  git cliff --skip-tags ".*beta.*"
+  ```
+  
+  Skipped tags are processed but not included in the output.
+</ParamField>
+
+<ParamField path="--ignore-tags" type="regex">
+  Sets the regex pattern for tags to ignore in the changelog
+  
+  **Environment variable:** `GIT_CLIFF_IGNORE_TAGS`
+  
+  ```bash
+  # Ignore RC tags
+  git cliff --ignore-tags ".*rc[0-9]+"
+  ```
+  
+  Ignored tags are completely skipped during processing.
+</ParamField>
+
+<ParamField path="--count-tags" type="regex">
+  Sets the regex pattern for tags to count in the changelog
+  
+  **Environment variable:** `GIT_CLIFF_COUNT_TAGS`
+  
+  ```bash
+  # Only count stable releases
+  git cliff --count-tags "v[0-9]+\.[0-9]+\.[0-9]+$"
+  ```
+</ParamField>
+
+<ParamField path="--skip-commit" type="sha1[]">
+  Sets commits that will be skipped in the changelog. Accepts multiple commit SHAs.
+  
+  **Environment variable:** `GIT_CLIFF_SKIP_COMMIT`
+  
+  ```bash
+  git cliff --skip-commit abc123 --skip-commit def456
+  ```
+</ParamField>
+
+## Output Options
+
+<ParamField path="-o, --output" type="path" default="CHANGELOG.md">
+  Writes output to the given file. If no path is provided, defaults to `CHANGELOG.md`.
+  
+  **Environment variable:** `GIT_CLIFF_OUTPUT`
+  
+  ```bash
+  # Use default filename
+  git cliff -o
+  
+  # Custom filename
+  git cliff --output HISTORY.md
+  
+  # Custom path
+  git cliff --output docs/CHANGELOG.md
+  ```
+</ParamField>
+
+<ParamField path="-p, --prepend" type="path">
+  Prepends entries to the given changelog file
+  
+  **Environment variable:** `GIT_CLIFF_PREPEND`
+  
+  ```bash
+  git cliff --unreleased --tag v1.0.0 --prepend CHANGELOG.md
+  ```
+  
+  <Warning>
+  The `--prepend` option is incompatible with `-o` if the file paths are equal.
+  </Warning>
+</ParamField>
+
+<ParamField path="-s, --strip" type="enum">
+  Strips the given parts from the changelog
+  
+  **Values:** `header`, `footer`, `all`
+  
+  ```bash
+  # Remove header
+  git cliff --strip header
+  
+  # Remove footer
+  git cliff --strip footer
+  
+  # Remove both
+  git cliff --strip all
+  ```
+</ParamField>
+
+## Template Options
+
+<ParamField path="-b, --body" type="template">
+  Sets the template for the changelog body
+  
+  **Environment variable:** `GIT_CLIFF_TEMPLATE`
+  
+  ```bash
+  # Simple list of commits
+  git cliff --body "{% for commit in commits %}{{ commit.message }}\n{% endfor %}"
+  
+  # With custom formatting
+  git cliff --body "## Changes\n{% for commit in commits %}- {{ commit.message }}\n{% endfor %}"
+  ```
+</ParamField>
+
+<ParamField path="--from-context" type="path">
+  Generates changelog from a JSON context file
+  
+  **Environment variable:** `GIT_CLIFF_CONTEXT`
+  
+  ```bash
+  # Export context
+  git cliff --context > context.json
+  
+  # Generate from context
+  git cliff --from-context context.json
+  ```
+</ParamField>
+
+## Version and Tag Options
+
+<ParamField path="-t, --tag" type="string">
+  Sets the tag for the latest version
+  
+  **Environment variable:** `GIT_CLIFF_TAG`
+  
+  ```bash
+  # Set tag for unreleased changes
+  git cliff --unreleased --tag v2.0.0
+  
+  # Tag with prefix
+  git cliff --tag testing/v1.0.0-beta.1
+  ```
+  
+  Note: This does not create an actual Git tag.
+</ParamField>
+
+<ParamField path="--bump" type="enum" default="auto">
+  Bumps the version for unreleased changes. Optionally with specified version type.
+  
+  **Values:** `auto`, `major`, `minor`, `patch`
+  
+  ```bash
+  # Automatic bump based on conventional commits
+  git cliff --bump
+  
+  # Force major version bump
+  git cliff --bump major
+  
+  # Force minor version bump
+  git cliff --bump minor
+  
+  # Force patch version bump
+  git cliff --bump patch
+  ```
+  
+  See [Version Bumping](/usage/bump-version) for more details.
+</ParamField>
+
+## Commit Options
+
+<ParamField path="--with-commit" type="string[]">
+  Sets custom commit messages to include in the changelog
+  
+  **Environment variable:** `GIT_CLIFF_WITH_COMMIT`
+  
+  ```bash
+  # Add custom commit
+  git cliff --with-commit "feat: add new feature"
+  
+  # Add commit with SHA
+  git cliff --with-commit "8f55e69 feat: add new feature"
+  
+  # Multiple commits
+  git cliff --with-commit "feat: add X" --with-commit "fix: resolve Y"
+  ```
+</ParamField>
+
+<ParamField path="--with-tag-message" type="string">
+  Sets custom message for the latest release
+  
+  **Environment variable:** `GIT_CLIFF_WITH_TAG_MESSAGE`
+  
+  ```bash
+  git cliff --with-tag-message "This is a special release"
+  ```
+</ParamField>
+
+## Sorting Options
+
+<ParamField path="--sort" type="enum" default="oldest">
+  Sets sorting of the commits inside sections
+  
+  **Values:** `oldest`, `newest`
+  
+  ```bash
+  # Oldest commits first (default)
+  git cliff --sort oldest
+  
+  # Newest commits first
+  git cliff --sort newest
+  ```
+</ParamField>
+
+## Remote Integration Options
+
+These options are only available when compiled with the respective feature flags.
+
+### GitHub
+
+<ParamField path="--github-token" type="token">
+  Sets the GitHub API token
+  
+  **Environment variable:** `GITHUB_TOKEN`
+  
+  ```bash
+  git cliff --github-token ghp_xxxxxxxxxxxx
+  
+  # Using environment variable
+  export GITHUB_TOKEN=ghp_xxxxxxxxxxxx
+  git cliff
+  ```
+</ParamField>
+
+<ParamField path="--github-repo" type="owner/repo">
+  Sets the GitHub repository
+  
+  **Environment variable:** `GITHUB_REPO`
+  
+  ```bash
+  git cliff --github-repo orhun/git-cliff
+  
+  # With full URL
+  git cliff --github-repo https://github.com/orhun/git-cliff
+  ```
+</ParamField>
+
+### GitLab
+
+<ParamField path="--gitlab-token" type="token">
+  Sets the GitLab API token
+  
+  **Environment variable:** `GITLAB_TOKEN`
+  
+  ```bash
+  git cliff --gitlab-token glpat-xxxxxxxxxxxx
+  ```
+</ParamField>
+
+<ParamField path="--gitlab-repo" type="owner/repo">
+  Sets the GitLab repository
+  
+  **Environment variable:** `GITLAB_REPO`
+  
+  ```bash
+  git cliff --gitlab-repo group/project
+  
+  # Nested groups
+  git cliff --gitlab-repo group/subgroup/project
+  ```
+</ParamField>
+
+### Gitea
+
+<ParamField path="--gitea-token" type="token">
+  Sets the Gitea API token
+  
+  **Environment variable:** `GITEA_TOKEN`
+  
+  ```bash
+  git cliff --gitea-token xxxxxxxxxxxx
+  ```
+</ParamField>
+
+<ParamField path="--gitea-repo" type="owner/repo">
+  Sets the Gitea repository
+  
+  **Environment variable:** `GITEA_REPO`
+  
+  ```bash
+  git cliff --gitea-repo owner/repo
+  ```
+</ParamField>
+
+### Bitbucket
+
+<ParamField path="--bitbucket-token" type="token">
+  Sets the Bitbucket API token
+  
+  **Environment variable:** `BITBUCKET_TOKEN`
+  
+  ```bash
+  git cliff --bitbucket-token xxxxxxxxxxxx
+  ```
+</ParamField>
+
+<ParamField path="--bitbucket-repo" type="owner/repo">
+  Sets the Bitbucket repository
+  
+  **Environment variable:** `BITBUCKET_REPO`
+  
+  ```bash
+  git cliff --bitbucket-repo owner/repo
+  ```
+</ParamField>
+
+### Azure DevOps
+
+<ParamField path="--azure-devops-token" type="token">
+  Sets the Azure DevOps API token
+  
+  **Environment variable:** `AZURE_DEVOPS_TOKEN`
+  
+  ```bash
+  git cliff --azure-devops-token xxxxxxxxxxxx
+  ```
+</ParamField>
+
+<ParamField path="--azure-devops-repo" type="owner/repo">
+  Sets the Azure DevOps repository
+  
+  **Environment variable:** `AZURE_DEVOPS_REPO`
+  
+  ```bash
+  git cliff --azure-devops-repo organization/project
+  ```
+</ParamField>
+
+### General Remote Options
+
+<ParamField path="--offline" type="flag">
+  Disable network access for remote repositories
+  
+  ```bash
+  git cliff --offline
+  ```
+  
+  Useful when working without internet connectivity or for faster execution.
+</ParamField>
+
+## Arguments
+
+<ParamField path="RANGE" type="string">
+  Sets the commit range to process. Uses Git range syntax.
+  
+  ```bash
+  # Between two commits
+  git cliff abc123..def456
+  
+  # From commit to HEAD
+  git cliff abc123..HEAD
+  
+  # Between two tags
+  git cliff v1.0.0..v2.0.0
+  
+  # From tag to HEAD
+  git cliff v1.0.0..
+  
+  # Last N commits
+  git cliff HEAD~5..
+  ```
+  
+  See [Git range syntax](https://git-scm.com/docs/git-range-diff) for more patterns.
+</ParamField>
+
+## Environment Variables
+
+All options can be set via environment variables using the `GIT_CLIFF_` prefix:
+
+```bash
+# Set config file
+export GIT_CLIFF_CONFIG="custom.toml"
+
+# Set output file
+export GIT_CLIFF_OUTPUT="CHANGELOG.md"
+
+# Set repository
+export GIT_CLIFF_REPOSITORY="/path/to/repo"
+
+# Set tag pattern
+export GIT_CLIFF_TAG_PATTERN="v[0-9]+\.[0-9]+\.[0-9]+"
+
+# Set GitHub token
+export GITHUB_TOKEN="ghp_xxxxxxxxxxxx"
+
+# Run git-cliff
+git cliff
+```
+
+## Configuration Precedence
+
+Configuration values are applied in the following order (later sources override earlier ones):
+
+1. Default values
+2. Configuration file (`cliff.toml`)
+3. Environment variables
+4. Command-line arguments
+
+## Examples
+
+### Generate Full Changelog
+
+```bash
+git cliff -o CHANGELOG.md
+```
+
+### Release Workflow
+
+```bash
+# Calculate next version
+VERSION=$(git cliff --bumped-version)
+
+# Generate changelog
+git cliff --tag "$VERSION" --unreleased -o CHANGELOG.md
+
+# Create tag
+git tag "$VERSION"
+```
+
+### Monorepo Package Release
+
+```bash
+git cliff --include-path "packages/api/**/*" \
+  --tag "api-v1.2.0" \
+  --unreleased \
+  -o packages/api/CHANGELOG.md
+```
+
+### Export for External Processing
+
+```bash
+git cliff --context | jq '.[] | select(.version == "1.0.0")'
+```
+
+## See Also
+
+- [Basic Usage](/usage/basic-usage) - Common usage patterns
+- [Version Bumping](/usage/bump-version) - Semantic version calculation
+- [Configuration](/configuration/overview) - Configuration file options

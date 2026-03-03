@@ -1,0 +1,426 @@
+---
+title: Azure DevOps Integration
+description: Integrate git-cliff with Azure DevOps to fetch pull request data, contributors, and labels
+---
+
+# Azure DevOps Integration
+
+For projects hosted on Azure DevOps, you can use git-cliff to add the following to your changelog:
+
+- Azure DevOps usernames
+- Contributors list (all contributors / first time)
+- Pull request links (associated with commits)
+- PR titles and labels
+
+<Note>
+If you have built from source, enable the `azure_devops` feature flag for the integration to work.
+</Note>
+
+## Setting up the remote
+
+As default, remote upstream URL is automatically retrieved from the Git repository.
+
+If that doesn't work or if you want to set a custom remote, there are several ways to configure it:
+
+### Configuration file
+
+Use the `remote.azure_devops` section in your `cliff.toml`:
+
+```toml cliff.toml
+[remote.azure_devops]
+owner = "organization/project"
+repo = "repository-name"
+token = ""  # Leave empty to use environment variable
+```
+
+<Warning>
+**Important**: For Azure DevOps, the `owner` field must be in the format `organization/project` (e.g., `myorg/myproject`), not just the organization name.
+</Warning>
+
+### Command line arguments
+
+Use the `--azure-devops-repo` argument (takes values in `ORGANIZATION/PROJECT/REPO` format):
+
+```bash
+git cliff --azure-devops-repo myorg/myproject/myrepo
+```
+
+### Environment variables
+
+Use the `AZURE_DEVOPS_REPO` environment variable:
+
+```bash
+AZURE_DEVOPS_REPO="myorg/myproject/myrepo" git cliff
+```
+
+## Authentication
+
+<Steps>
+
+### Understanding rate limits
+
+[Azure DevOps REST API](https://learn.microsoft.com/en-us/rest/api/azure/devops/) is used to retrieve data from Azure DevOps. It has [rate limiting](https://learn.microsoft.com/en-us/azure/devops/integrate/concepts/rate-limits) rules that vary based on authentication and resource usage.
+
+### Create a Personal Access Token (PAT)
+
+Follow [this guide](https://learn.microsoft.com/en-us/azure/devops/organizations/accounts/use-personal-access-tokens-to-authenticate) for creating a personal access token.
+
+#### Required permissions:
+
+- **Code (Read)**: To access repository information
+- **Work Items (Read)**: Optional, for enhanced metadata
+
+#### Steps to create:
+
+1. Navigate to **User Settings** → **Personal Access Tokens**
+2. Click **New Token**
+3. Set **Organization**: Select your organization or "All accessible organizations"
+4. Set **Scopes**: Select **Code (Read)**
+5. Create and copy the token
+
+### Set the token
+
+You can provide the access token in multiple ways:
+
+<CodeGroup>
+
+```bash Environment Variable (Recommended)
+AZURE_DEVOPS_TOKEN="your_pat_here" git cliff --azure-devops-repo "myorg/myproject/myrepo"
+```
+
+```bash Command Line Argument
+git cliff --azure-devops-token "your_pat_here" --azure-devops-repo "myorg/myproject/myrepo"
+```
+
+```toml Configuration File (Not Recommended)
+[remote.azure_devops]
+owner = "myorg/myproject"
+repo = "myrepo"
+token = "your_pat_here"  # Not recommended for security
+```
+
+```yaml Azure Pipelines
+variables:
+  AZURE_DEVOPS_TOKEN: $(System.AccessToken)
+
+steps:
+  - script: |
+      git cliff --azure-devops-repo "$(System.TeamProject)/$(Build.Repository.Name)"
+    displayName: 'Generate Changelog'
+```
+
+</CodeGroup>
+
+</Steps>
+
+## Azure DevOps Services vs Server
+
+### Azure DevOps Services (Cloud)
+
+The default configuration works with Azure DevOps Services (dev.azure.com):
+
+```bash
+# Default: Azure DevOps Services
+AZURE_DEVOPS_TOKEN="your_token" \
+git cliff --azure-devops-repo "myorg/myproject/myrepo"
+```
+
+### Azure DevOps Server (On-Premises)
+
+For Azure DevOps Server (on-premises installations), use the `AZURE_DEVOPS_API_URL` environment variable:
+
+```bash
+AZURE_DEVOPS_API_URL="https://tfs.company.com" \
+AZURE_DEVOPS_TOKEN="your_token" \
+git cliff --azure-devops-repo "DefaultCollection/myproject/myrepo"
+```
+
+Or configure it in `cliff.toml`:
+
+```toml cliff.toml
+[remote.azure_devops]
+owner = "DefaultCollection/myproject"
+repo = "myrepo"
+api_url = "https://tfs.company.com"
+```
+
+## Advanced Configuration
+
+### Organization and Project Structure
+
+Azure DevOps uses a hierarchical structure:
+
+```
+https://dev.azure.com/{organization}/{project}/_git/{repository}
+```
+
+In git-cliff configuration:
+- **owner**: `{organization}/{project}`
+- **repo**: `{repository}`
+
+**Example:**
+
+```toml
+[remote.azure_devops]
+owner = "mycompany/backend-team"  # organization/project
+repo = "api-service"              # repository
+```
+
+### TLS Certificate Issues
+
+If you encounter certificate errors with on-premises servers, use the `--use-native-tls` flag:
+
+```bash
+git cliff --azure-devops-repo "org/project/repo" --use-native-tls
+```
+
+Or configure it in `cliff.toml`:
+
+```toml
+[remote.azure_devops]
+owner = "myorg/myproject"
+repo = "myrepo"
+native_tls = true
+```
+
+## Template Variables
+
+### Remote metadata
+
+You can use the following context for adding the remote to the changelog:
+
+```json
+{
+  "azure_devops": {
+    "owner": "myorg/myproject",
+    "repo": "myrepo"
+  }
+}
+```
+
+**Example template:**
+
+```jinja
+https://dev.azure.com/{{ remote.azure_devops.owner }}/_git/{{ remote.azure_devops.repo }}/branchCompare?baseVersion=GT{{ previous.version }}&targetVersion=GT{{ version }}
+```
+
+### Commit authors and PR data
+
+For each commit, Azure DevOps-related values are added as a nested `remote` object:
+
+```json
+{
+  "id": "8edec7fd50f703811d55f14a3c5f0fd02b43d9e7",
+  "message": "refactor(config): remove unnecessary newline from configs\n",
+  "group": "🚜 Refactor",
+  "remote": {
+    "username": "orhun",
+    "pr_title": "some things have changed",
+    "pr_number": 420,
+    "pr_labels": ["enhancement", "documentation"],
+    "is_first_time": false
+  }
+}
+```
+
+**Example template:**
+
+```jinja
+{% for commit in commits %}
+  * {{ commit.message | split(pat="\n") | first | trim }}\
+    {% if commit.remote.username %} by @{{ commit.remote.username }}{%- endif %}\
+    {% if commit.remote.pr_number %} in #{{ commit.remote.pr_number }}{%- endif %}
+{%- endfor -%}
+```
+
+**Output:**
+
+```markdown
+- feat(commit): add merge_commit flag to the context by @orhun in #389
+- feat(args): set `CHANGELOG.md` as default missing value for output option by @sh-cho in #354
+```
+
+### Contributors list
+
+For each release, contributors data is added to the template context:
+
+```json
+{
+  "version": "v1.4.0",
+  "commits": [],
+  "azure_devops": {
+    "contributors": [
+      {
+        "username": "orhun",
+        "pr_title": "some things have changed",
+        "pr_number": 420,
+        "pr_labels": ["enhancement"],
+        "is_first_time": true
+      },
+      {
+        "username": "cliffjumper",
+        "pr_title": "I love jumping",
+        "pr_number": 999,
+        "pr_labels": ["feature"],
+        "is_first_time": true
+      }
+    ]
+  }
+}
+```
+
+**Example template for first-time contributors:**
+
+```jinja
+{% for contributor in azure_devops.contributors | filter(attribute="is_first_time", value=true) %}
+  * @{{ contributor.username }} made their first contribution in #{{ contributor.pr_number }}
+{%- endfor -%}
+```
+
+**Output:**
+
+```markdown
+- @orhun made their first contribution in #420
+- @cliffjumper made their first contribution in #999
+```
+
+### Group commits by PR labels
+
+You can organize changelog entries by pull request labels:
+
+```jinja
+{% for group, commits in commits | group_by(attribute="remote.pr_labels") %}
+### {{ group | upper }}
+{% for commit in commits %}
+- {{ commit.message | split(pat="\n") | first }} (#{{ commit.remote.pr_number }})
+{%- endfor %}
+{% endfor %}
+```
+
+## Configuration Example
+
+Complete configuration example for an Azure DevOps-hosted project:
+
+```toml cliff.toml
+[remote.azure_devops]
+owner = "myorganization/backend-project"
+repo = "api-service"
+# token = ""  # Use AZURE_DEVOPS_TOKEN environment variable instead
+
+[changelog]
+header = """
+# Changelog
+
+All notable changes to this project will be documented in this file.
+"""
+
+body = """
+{% for commit in commits %}
+  * {{ commit.message | split(pat="\n") | first | trim }}\
+    {% if commit.remote.username %} by @{{ commit.remote.username }}{%- endif %}\
+    {% if commit.remote.pr_number %} in #{{ commit.remote.pr_number }}{%- endif %}
+{% endfor %}
+
+{% if azure_devops.contributors | filter(attribute="is_first_time", value=true) %}
+## New Contributors
+{% for contributor in azure_devops.contributors | filter(attribute="is_first_time", value=true) %}
+  * @{{ contributor.username }} made their first contribution in #{{ contributor.pr_number }}
+{%- endfor %}
+{% endif %}
+"""
+
+footer = "<!-- generated by git-cliff -->"
+```
+
+## Azure Pipelines Integration
+
+Example `azure-pipelines.yml` configuration:
+
+```yaml azure-pipelines.yml
+trigger:
+  tags:
+    include:
+      - v*
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  AZURE_DEVOPS_TOKEN: $(System.AccessToken)
+
+steps:
+  - script: |
+      # Install git-cliff
+      curl -sSL https://github.com/orhun/git-cliff/releases/latest/download/git-cliff-$(git-cliff --version | awk '{print $2}')-x86_64-unknown-linux-gnu.tar.gz | tar xz
+    displayName: 'Install git-cliff'
+
+  - script: |
+      ./git-cliff --azure-devops-repo "$(System.TeamFoundationCollectionUri)$(System.TeamProject)/_git/$(Build.Repository.Name)" -o CHANGELOG.md
+    displayName: 'Generate Changelog'
+    env:
+      AZURE_DEVOPS_TOKEN: $(System.AccessToken)
+
+  - task: PublishBuildArtifacts@1
+    inputs:
+      PathtoPublish: 'CHANGELOG.md'
+      ArtifactName: 'changelog'
+    displayName: 'Publish Changelog'
+```
+
+## Azure DevOps Changelog Example
+
+For a Keep a Changelog format with Azure DevOps integration, use the `azure-devops-keepachangelog.toml` example:
+
+```bash
+git cliff -c azure-devops-keepachangelog
+```
+
+This generates:
+
+```markdown
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [1.0.0] - 2024-01-15
+
+### Added
+- feat: add new feature by @orhun in #123
+- feat: support Azure DevOps integration by @contributor in #456
+
+### Fixed
+- fix: resolve bug in parser by @orhun in #789
+
+### Changed
+- refactor: improve performance by @cliffjumper in #202
+
+[1.0.0]: https://dev.azure.com/myorg/myproject/_git/myrepo/branchCompare?baseVersion=GTv0.9.0&targetVersion=GTv1.0.0
+
+<!-- generated by git-cliff -->
+```
+
+## Common Issues
+
+### Authentication Failures
+
+If you encounter `401 Unauthorized` errors:
+
+1. Verify your PAT has **Code (Read)** permissions
+2. Ensure the token hasn't expired
+3. Check that the organization/project is accessible with your account
+4. For Azure Pipelines, use `$(System.AccessToken)` instead of a PAT
+
+### Project Path Format
+
+Make sure to use the correct format:
+- ✅ Correct: `owner = "myorg/myproject"`
+- ❌ Incorrect: `owner = "myorg"`
+
+### On-Premises URL
+
+For Azure DevOps Server, include the collection name:
+- ✅ Correct: `owner = "DefaultCollection/myproject"`
+- ❌ Incorrect: `owner = "myproject"`

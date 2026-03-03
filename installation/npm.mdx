@@ -1,0 +1,394 @@
+---
+title: Install via NPM
+description: Install git-cliff from NPM for Node.js projects with TypeScript API support
+---
+
+# Install via NPM
+
+Install git-cliff from [NPM](https://www.npmjs.com/package/git-cliff) for seamless integration with Node.js projects.
+
+## Quick Start
+
+Run git-cliff without installing:
+
+```bash
+npx git-cliff@latest
+```
+
+## Installation
+
+<Tabs>
+  <Tab title="npm">
+    Install as a dev dependency:
+    
+    ```bash
+    npm install git-cliff --save-dev
+    ```
+    
+    Run after installation:
+    ```bash
+    npx git-cliff
+    ```
+  </Tab>
+  
+  <Tab title="yarn">
+    Install with Yarn:
+    
+    ```bash
+    yarn add -D git-cliff
+    ```
+    
+    Run after installation:
+    ```bash
+    yarn git-cliff
+    ```
+  </Tab>
+  
+  <Tab title="pnpm">
+    Install with pnpm:
+    
+    ```bash
+    pnpm add -D git-cliff
+    ```
+    
+    Run after installation:
+    ```bash
+    pnpm exec git-cliff
+    ```
+  </Tab>
+  
+  <Tab title="bun">
+    Install with Bun:
+    
+    ```bash
+    bun add -d git-cliff
+    ```
+    
+    Run after installation:
+    ```bash
+    bunx git-cliff
+    ```
+  </Tab>
+</Tabs>
+
+## Detailed Installation Steps
+
+<Steps>
+  <Step title="Install Node.js">
+    Ensure you have a supported Node.js version:
+    
+    - Node.js >= 18.19
+    - Node.js >= 20.6
+    - Node.js >= 21
+    
+    Check your version:
+    ```bash
+    node --version
+    ```
+  </Step>
+  
+  <Step title="Add to project">
+    Install git-cliff in your project:
+    
+    ```bash
+    npm install git-cliff --save-dev
+    ```
+    
+    This adds git-cliff to your `package.json`:
+    ```json
+    {
+      "devDependencies": {
+        "git-cliff": "^2.7.0"
+      }
+    }
+    ```
+  </Step>
+  
+  <Step title="Add npm script">
+    Add a script to your `package.json`:
+    
+    ```json
+    {
+      "scripts": {
+        "changelog": "git-cliff -o CHANGELOG.md",
+        "changelog:unreleased": "git-cliff --unreleased",
+        "changelog:latest": "git-cliff --latest"
+      }
+    }
+    ```
+  </Step>
+  
+  <Step title="Run git-cliff">
+    ```bash
+    npm run changelog
+    ```
+  </Step>
+  
+  <Step title="Verify installation">
+    ```bash
+    npx git-cliff --version
+    ```
+  </Step>
+</Steps>
+
+## Programmatic API
+
+git-cliff provides a fully typed TypeScript API for integration into your tools.
+
+### Basic Usage
+
+```typescript
+import { runGitCliff, type Options } from "git-cliff";
+
+const options: Options = {
+  output: "CHANGELOG.md",
+  latest: true,
+};
+
+await runGitCliff(options);
+```
+
+### Advanced Usage
+
+<CodeGroup>
+  ```typescript Generate changelog
+  import { runGitCliff } from "git-cliff";
+  
+  // Generate full changelog
+  await runGitCliff({
+    output: "CHANGELOG.md",
+    tag: "v1.0.0",
+  });
+  ```
+  
+  ```typescript Get unreleased changes
+  import { runGitCliff } from "git-cliff";
+  
+  // Get unreleased changes
+  await runGitCliff({
+    unreleased: true,
+    strip: "all",
+  });
+  ```
+  
+  ```typescript Custom configuration
+  import { runGitCliff } from "git-cliff";
+  
+  // Use custom config
+  await runGitCliff({
+    config: "./cliff.toml",
+    repository: ".",
+    output: "CHANGELOG.md",
+  });
+  ```
+  
+  ```typescript Integration example
+  import { runGitCliff, type Options } from "git-cliff";
+  import fs from "fs/promises";
+  
+  async function generateChangelog(version: string) {
+    const options: Options = {
+      tag: `v${version}`,
+      output: "CHANGELOG.md",
+    };
+    
+    try {
+      await runGitCliff(options);
+      console.log(`Changelog generated for ${version}`);
+      
+      // Read and process the changelog
+      const changelog = await fs.readFile("CHANGELOG.md", "utf-8");
+      console.log(changelog);
+    } catch (error) {
+      console.error("Failed to generate changelog:", error);
+      process.exit(1);
+    }
+  }
+  
+  generateChangelog("1.2.0");
+  ```
+</CodeGroup>
+
+## Supported Platforms
+
+NPM packages are distributed for:
+
+| Platform | Architecture |
+|----------|-------------|
+| Linux | x64, arm64 |
+| macOS | x64 (Intel), arm64 (Apple Silicon) |
+| Windows | x64, arm64 |
+
+## Integration Examples
+
+<Tabs>
+  <Tab title="Release Script">
+    Create a release script in `scripts/release.js`:
+    
+    ```javascript
+    import { runGitCliff } from "git-cliff";
+    import { execSync } from "child_process";
+    
+    const version = process.argv[2];
+    if (!version) {
+      console.error("Usage: node scripts/release.js <version>");
+      process.exit(1);
+    }
+    
+    // Generate changelog
+    await runGitCliff({
+      tag: `v${version}`,
+      output: "CHANGELOG.md",
+    });
+    
+    // Commit and tag
+    execSync(`git add CHANGELOG.md`);
+    execSync(`git commit -m "chore: release v${version}"`);
+    execSync(`git tag v${version}`);
+    
+    console.log(`Released v${version}`);
+    ```
+    
+    Add to `package.json`:
+    ```json
+    {
+      "scripts": {
+        "release": "node scripts/release.js"
+      }
+    }
+    ```
+    
+    Usage:
+    ```bash
+    npm run release 1.2.0
+    ```
+  </Tab>
+  
+  <Tab title="Pre-commit Hook">
+    Update changelog on commit using Husky:
+    
+    ```bash
+    npm install -D husky
+    npx husky init
+    ```
+    
+    Create `.husky/pre-commit`:
+    ```bash
+    #!/bin/sh
+    npx git-cliff -o CHANGELOG.md --unreleased
+    git add CHANGELOG.md
+    ```
+  </Tab>
+  
+  <Tab title="CI/CD Integration">
+    GitHub Actions workflow:
+    
+    ```yaml .github/workflows/changelog.yml
+    name: Generate Changelog
+    
+    on:
+      push:
+        tags:
+          - 'v*'
+    
+    jobs:
+      changelog:
+        runs-on: ubuntu-latest
+        steps:
+          - uses: actions/checkout@v4
+            with:
+              fetch-depth: 0
+          
+          - uses: actions/setup-node@v4
+            with:
+              node-version: '20'
+          
+          - name: Install dependencies
+            run: npm ci
+          
+          - name: Generate changelog
+            run: npx git-cliff -o CHANGELOG.md
+          
+          - name: Commit changelog
+            run: |
+              git config user.name "github-actions[bot]"
+              git config user.email "github-actions[bot]@users.noreply.github.com"
+              git add CHANGELOG.md
+              git commit -m "docs: update changelog"
+              git push
+    ```
+  </Tab>
+</Tabs>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Node.js version not supported">
+    Ensure you're using a supported Node.js version:
+    
+    ```bash
+    node --version
+    ```
+    
+    Minimum versions:
+    - >= 18.19
+    - >= 20.6
+    - >= 21
+    
+    Update Node.js if needed:
+    ```bash
+    # Using nvm
+    nvm install 20
+    nvm use 20
+    ```
+  </Accordion>
+  
+  <Accordion title="Binary not found or fails to execute">
+    The npm package downloads platform-specific binaries. If the binary fails:
+    
+    1. Check your platform is supported
+    2. Try reinstalling:
+       ```bash
+       rm -rf node_modules package-lock.json
+       npm install
+       ```
+    3. Clear npm cache:
+       ```bash
+       npm cache clean --force
+       ```
+  </Accordion>
+  
+  <Accordion title="TypeScript types not found">
+    git-cliff includes TypeScript types. Ensure your `tsconfig.json` includes:
+    
+    ```json
+    {
+      "compilerOptions": {
+        "moduleResolution": "node",
+        "types": ["node"]
+      }
+    }
+    ```
+  </Accordion>
+  
+  <Accordion title="npx runs wrong version">
+    Clear npx cache and specify version:
+    
+    ```bash
+    npx clear-npx-cache
+    npx git-cliff@latest --version
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Configuration" icon="gear" href="/configuration/overview">
+    Configure git-cliff for your project
+  </Card>
+  
+  <Card title="GitHub Actions" icon="github" href="/integrations/github-actions">
+    Automate changelog generation
+  </Card>
+</CardGroup>

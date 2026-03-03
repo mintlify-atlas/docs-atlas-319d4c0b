@@ -1,0 +1,142 @@
+---
+title: Configuration Overview
+description: Learn how to configure git-cliff for changelog generation
+---
+
+git-cliff uses a TOML or YAML configuration file to customize changelog generation. The configuration file defines how commits are parsed, grouped, and formatted into a changelog.
+
+## Configuration File Location
+
+The configuration file is read from `$HOME/git-cliff/cliff.toml` if it exists. This location depends on your platform:
+
+- **Linux**: `/home/<user>/.config/git-cliff/cliff.toml`
+- **Windows**: `C:\Users\<user>\AppData\Roaming\git-cliff\cliff.toml`
+- **macOS**: `/Users/<user>/Library/Application Support/git-cliff/cliff.toml`
+
+## Initializing Configuration
+
+To create a default configuration file in your project:
+
+```bash
+git cliff --init
+```
+
+This creates a `cliff.toml` file in your current directory with default settings.
+
+## Configuration Structure
+
+The configuration file is organized into four main sections:
+
+<CardGroup cols={2}>
+  <Card title="Changelog" icon="file-lines" href="/configuration/changelog">
+    Configure header, body, footer templates and output settings
+  </Card>
+  <Card title="Git" icon="git-alt" href="/configuration/git">
+    Define commit parsing rules, filters, and git-specific options
+  </Card>
+  <Card title="Remote" icon="cloud" href="/configuration/remote">
+    Set up integration with GitHub, GitLab, Gitea, Bitbucket, and Azure DevOps
+  </Card>
+  <Card title="Bump" icon="arrow-up" href="/configuration/bump">
+    Configure semantic version bumping rules
+  </Card>
+</CardGroup>
+
+## Basic Example
+
+Here's a minimal configuration file:
+
+```toml
+[changelog]
+body = """
+{% if version %}\n    ## {{ version | trim_start_matches(pat="v") }} - {{ timestamp | date(format="%Y-%m-%d") }}\n{% else %}\n    ## Unreleased\n{% endif %}\n{% for group, commits in commits | group_by(attribute="group") %}
+    ### {{ group | upper_first }}
+    {% for commit in commits %}\n        - {% if commit.breaking %}[**breaking**] {% endif %}{{ commit.message | upper_first }}
+    {% endfor %}\n{% endfor %}\n
+"""
+```
+
+This configuration uses Tera templating to generate a simple changelog with version headers and grouped commits.
+
+## Environment Variable Overrides
+
+You can override any configuration option using environment variables with the format:
+
+```
+GIT_CLIFF__<SECTION>__<FIELD_NAME>
+```
+
+### Examples
+
+<ParamField path="GIT_CLIFF__CHANGELOG__FOOTER" type="string">
+  Override the changelog footer:
+  
+  ```bash
+  export GIT_CLIFF__CHANGELOG__FOOTER="<!-- footer from env -->"
+  ```
+</ParamField>
+
+<ParamField path="GIT_CLIFF__GIT__IGNORE_TAGS" type="string">
+  Override the ignore_tags pattern:
+  
+  ```bash
+  export GIT_CLIFF__GIT__IGNORE_TAGS="v[0-9]+.[0-9]+.[0-9]+-rc[0-9]+"
+  ```
+</ParamField>
+
+## Manifest Configuration
+
+You can embed git-cliff configuration in your project manifest files:
+
+**Cargo.toml** (Rust projects):
+
+```toml
+[package.metadata.git-cliff.changelog]
+header = "Changelog"
+trim = true
+
+[package.metadata.git-cliff.git]
+conventional_commits = true
+```
+
+**pyproject.toml** (Python projects):
+
+```toml
+[tool.git-cliff.changelog]
+header = "Changelog"
+trim = true
+
+[tool.git-cliff.git]
+conventional_commits = true
+```
+
+## Configuration Formats
+
+git-cliff supports both TOML (recommended) and YAML formats:
+
+**TOML** (cliff.toml):
+```toml
+[git]
+conventional_commits = true
+filter_unconventional = true
+```
+
+**YAML** (cliff.yaml):
+```yaml
+git:
+  conventional_commits: true
+  filter_unconventional: true
+```
+
+## Default Configuration
+
+See the [default cliff.toml](https://github.com/orhun/git-cliff/blob/main/config/cliff.toml) for a complete example with all available options.
+
+## Next Steps
+
+Explore each configuration section in detail:
+
+- [Changelog Configuration](/configuration/changelog) - Templates and output settings
+- [Git Configuration](/configuration/git) - Commit parsing and filtering
+- [Remote Configuration](/configuration/remote) - Remote integration setup
+- [Bump Configuration](/configuration/bump) - Version bumping rules

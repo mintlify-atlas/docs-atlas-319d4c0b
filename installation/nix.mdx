@@ -1,0 +1,476 @@
+---
+title: Install via Nix
+description: Install git-cliff using the Nix package manager for reproducible builds
+---
+
+# Install via Nix
+
+Install git-cliff using [Nix](https://search.nixos.org/packages?channel=24.05&show=git-cliff) for reproducible, declarative package management.
+
+## Quick Start
+
+<Tabs>
+  <Tab title="nix-shell">
+    Temporarily use git-cliff:
+    
+    ```bash
+    nix-shell -p git-cliff
+    ```
+    
+    This opens a shell with git-cliff available.
+  </Tab>
+  
+  <Tab title="nix-env">
+    Install permanently:
+    
+    ```bash
+    nix-env -iA nixpkgs.git-cliff
+    ```
+  </Tab>
+  
+  <Tab title="nix run">
+    Run without installing (new CLI):
+    
+    ```bash
+    nix run nixpkgs#git-cliff
+    ```
+  </Tab>
+  
+  <Tab title="nix shell">
+    Open a shell with git-cliff (new CLI):
+    
+    ```bash
+    nix shell nixpkgs#git-cliff
+    ```
+  </Tab>
+</Tabs>
+
+## Installation Methods
+
+### Traditional Nix Commands
+
+<Steps>
+  <Step title="Using nix-shell (Recommended)">
+    Temporarily add git-cliff to your environment:
+    
+    ```bash
+    nix-shell -p git-cliff
+    ```
+    
+    This creates an isolated environment with git-cliff available.
+    
+    To use it:
+    ```bash
+    git-cliff --version
+    ```
+  </Step>
+  
+  <Step title="Using nix-env">
+    Install git-cliff permanently:
+    
+    ```bash
+    nix-env -iA nixpkgs.git-cliff
+    ```
+    
+    <Warning>
+      Using nix-env permanently modifies a local profile. Consider using `nix-shell` or NixOS configuration instead for better reproducibility.
+    </Warning>
+  </Step>
+  
+  <Step title="Verify installation">
+    ```bash
+    git-cliff --version
+    ```
+  </Step>
+</Steps>
+
+### New Nix CLI (Experimental)
+
+<Note>
+  The new Nix CLI requires enabling experimental features. Add to `~/.config/nix/nix.conf`:
+  ```
+  experimental-features = nix-command flakes
+  ```
+</Note>
+
+<Tabs>
+  <Tab title="nix run">
+    Run git-cliff directly without installing:
+    
+    ```bash
+    nix run nixpkgs#git-cliff
+    ```
+    
+    With arguments:
+    ```bash
+    nix run nixpkgs#git-cliff -- --help
+    nix run nixpkgs#git-cliff -- -o CHANGELOG.md
+    ```
+  </Tab>
+  
+  <Tab title="nix shell">
+    Open a shell with git-cliff available:
+    
+    ```bash
+    nix shell nixpkgs#git-cliff
+    ```
+    
+    Multiple packages:
+    ```bash
+    nix shell nixpkgs#git-cliff nixpkgs#git
+    ```
+  </Tab>
+  
+  <Tab title="nix profile">
+    Install to your profile:
+    
+    ```bash
+    nix profile install nixpkgs#git-cliff
+    ```
+    
+    List installed packages:
+    ```bash
+    nix profile list
+    ```
+    
+    Remove:
+    ```bash
+    nix profile remove git-cliff
+    ```
+  </Tab>
+</Tabs>
+
+## NixOS Configuration
+
+Add git-cliff to your system configuration:
+
+<Tabs>
+  <Tab title="configuration.nix">
+    Add to `/etc/nixos/configuration.nix`:
+    
+    ```nix
+    { config, pkgs, ... }:
+    
+    {
+      environment.systemPackages = with pkgs; [
+        git-cliff
+        # other packages...
+      ];
+    }
+    ```
+    
+    Rebuild your system:
+    ```bash
+    sudo nixos-rebuild switch
+    ```
+  </Tab>
+  
+  <Tab title="home-manager">
+    Add to your home-manager configuration:
+    
+    ```nix home.nix
+    { config, pkgs, ... }:
+    
+    {
+      home.packages = with pkgs; [
+        git-cliff
+      ];
+    }
+    ```
+    
+    Apply changes:
+    ```bash
+    home-manager switch
+    ```
+  </Tab>
+  
+  <Tab title="Flakes">
+    In your `flake.nix`:
+    
+    ```nix
+    {
+      description = "My system configuration";
+      
+      inputs = {
+        nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+      };
+      
+      outputs = { self, nixpkgs }: {
+        nixosConfigurations.myhost = nixpkgs.lib.nixosSystem {
+          system = "x86_64-linux";
+          modules = [
+            ({ pkgs, ... }: {
+              environment.systemPackages = [ pkgs.git-cliff ];
+            })
+          ];
+        };
+      };
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## Development Shell
+
+Create a development environment with git-cliff:
+
+<Tabs>
+  <Tab title="shell.nix">
+    Create `shell.nix` in your project:
+    
+    ```nix
+    { pkgs ? import <nixpkgs> {} }:
+    
+    pkgs.mkShell {
+      buildInputs = with pkgs; [
+        git-cliff
+        git
+      ];
+      
+      shellHook = ''
+        echo "git-cliff $(git-cliff --version)"
+        echo "Development environment ready!"
+      '';
+    }
+    ```
+    
+    Enter the shell:
+    ```bash
+    nix-shell
+    ```
+  </Tab>
+  
+  <Tab title="flake.nix">
+    Create `flake.nix` for your project:
+    
+    ```nix
+    {
+      description = "Development environment with git-cliff";
+      
+      inputs = {
+        nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+        flake-utils.url = "github:numtide/flake-utils";
+      };
+      
+      outputs = { self, nixpkgs, flake-utils }:
+        flake-utils.lib.eachDefaultSystem (system:
+          let
+            pkgs = nixpkgs.legacyPackages.${system};
+          in
+          {
+            devShells.default = pkgs.mkShell {
+              buildInputs = with pkgs; [
+                git-cliff
+                git
+              ];
+              
+              shellHook = ''
+                echo "git-cliff development environment"
+                git-cliff --version
+              '';
+            };
+          }
+        );
+    }
+    ```
+    
+    Enter the development shell:
+    ```bash
+    nix develop
+    ```
+  </Tab>
+</Tabs>
+
+## Channel Management
+
+### Using Stable Channel
+
+git-cliff is available in the [stable channel](https://search.nixos.org/packages?channel=24.05&show=git-cliff):
+
+```bash
+nix-shell -p git-cliff
+```
+
+### Using Unstable Channel
+
+For the latest features, use the unstable channel:
+
+<Steps>
+  <Step title="Add unstable channel">
+    ```bash
+    nix-channel --add https://nixos.org/channels/nixpkgs-unstable
+    nix-channel --update nixpkgs
+    ```
+  </Step>
+  
+  <Step title="Install from unstable">
+    ```bash
+    nix-env -iA nixpkgs.git-cliff
+    ```
+  </Step>
+</Steps>
+
+## Managing Installation
+
+<CodeGroup>
+  ```bash List installed packages
+  # Using nix-env
+  nix-env -q | grep git-cliff
+  
+  # Using nix profile (new CLI)
+  nix profile list | grep git-cliff
+  ```
+  
+  ```bash Update
+  # Update channels
+  nix-channel --update
+  
+  # Upgrade packages
+  nix-env -u git-cliff
+  
+  # Or upgrade all
+  nix-env -u
+  ```
+  
+  ```bash Remove
+  # Using nix-env
+  nix-env -e git-cliff
+  
+  # Using nix profile (new CLI)
+  nix profile remove git-cliff
+  ```
+  
+  ```bash Check package info
+  # Search for package
+  nix search nixpkgs git-cliff
+  
+  # Show package details
+  nix-env -qa --description git-cliff
+  ```
+</CodeGroup>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Command not found after installation">
+    Ensure your Nix profile is in your PATH:
+    
+    ```bash
+    echo $PATH | grep nix
+    ```
+    
+    Add to your shell configuration (`~/.bashrc`, `~/.zshrc`, etc.):
+    ```bash
+    export PATH="$HOME/.nix-profile/bin:$PATH"
+    ```
+    
+    Or source the Nix profile:
+    ```bash
+    . ~/.nix-profile/etc/profile.d/nix.sh
+    ```
+  </Accordion>
+  
+  <Accordion title="Experimental features not enabled">
+    To use the new Nix CLI commands, enable experimental features:
+    
+    **Permanently:**
+    
+    Create/edit `~/.config/nix/nix.conf`:
+    ```
+    experimental-features = nix-command flakes
+    ```
+    
+    **Temporarily:**
+    ```bash
+    nix --experimental-features 'nix-command flakes' run nixpkgs#git-cliff
+    ```
+  </Accordion>
+  
+  <Accordion title="Package not found">
+    Update your channels:
+    
+    ```bash
+    nix-channel --update
+    ```
+    
+    Or search for the package:
+    ```bash
+    nix search nixpkgs git-cliff
+    ```
+    
+    Try the unstable channel if not found in stable.
+  </Accordion>
+  
+  <Accordion title="Permission denied errors">
+    Nix should not require sudo for most operations. If you get permission errors:
+    
+    1. Ensure Nix is properly installed:
+       ```bash
+       nix --version
+       ```
+    
+    2. Check Nix daemon is running (multi-user install):
+       ```bash
+       sudo systemctl status nix-daemon
+       ```
+    
+    3. Reinstall Nix if needed:
+       ```bash
+       sh <(curl -L https://nixos.org/nix/install) --daemon
+       ```
+  </Accordion>
+  
+  <Accordion title="Old version installed">
+    If you're getting an older version:
+    
+    1. Update channels:
+       ```bash
+       nix-channel --update
+       ```
+    
+    2. Reinstall:
+       ```bash
+       nix-env -e git-cliff
+       nix-env -iA nixpkgs.git-cliff
+       ```
+    
+    3. Or use unstable channel:
+       ```bash
+       nix-channel --add https://nixos.org/channels/nixpkgs-unstable
+       nix-channel --update
+       nix-env -iA nixpkgs.git-cliff
+       ```
+  </Accordion>
+</AccordionGroup>
+
+## Why Use Nix?
+
+<CardGroup cols={2}>
+  <Card title="Reproducibility" icon="rotate">
+    Nix ensures exact reproducibility. The same configuration always produces the same result.
+  </Card>
+  
+  <Card title="Declarative" icon="code">
+    Define your environment declaratively. Share configurations across machines.
+  </Card>
+  
+  <Card title="Rollbacks" icon="clock-rotate-left">
+    Easily rollback to previous configurations if something breaks.
+  </Card>
+  
+  <Card title="Isolation" icon="shield">
+    Packages are isolated. No conflicts between versions or dependencies.
+  </Card>
+</CardGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Configuration" icon="gear" href="/configuration/overview">
+    Configure git-cliff for your project
+  </Card>
+  
+  <Card title="Nix Flakes" icon="snowflake" href="https://nixos.wiki/wiki/Flakes">
+    Learn about Nix Flakes
+  </Card>
+</CardGroup>

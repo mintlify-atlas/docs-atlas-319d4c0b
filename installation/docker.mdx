@@ -1,0 +1,365 @@
+---
+title: Install via Docker
+description: Run git-cliff in containers using Docker Hub or GitHub Container Registry
+---
+
+# Install via Docker
+
+Run git-cliff in Docker containers without local installation.
+
+## Quick Start
+
+<Tabs>
+  <Tab title="Docker Hub">
+    Run git-cliff from [Docker Hub](https://hub.docker.com/r/orhunp/git-cliff):
+    
+    ```bash
+    docker run -t -v "$(pwd):/app/" orhunp/git-cliff:latest
+    ```
+  </Tab>
+  
+  <Tab title="GitHub Container Registry">
+    Run from [GitHub Container Registry](https://github.com/orhun/git-cliff/pkgs/container/git-cliff%2Fgit-cliff):
+    
+    ```bash
+    docker run -t -v "$(pwd):/app/" ghcr.io/orhun/git-cliff/git-cliff:latest
+    ```
+  </Tab>
+</Tabs>
+
+## Available Images
+
+Docker images are available in two registries:
+
+| Registry | Image URL | Updates |
+|----------|-----------|--------|
+| Docker Hub | `orhunp/git-cliff` | Automated on release |
+| GitHub CR | `ghcr.io/orhun/git-cliff/git-cliff` | Automated on release |
+
+## Available Tags
+
+Images follow these tagging conventions:
+
+| Tag | Description | Example |
+|-----|-------------|--------|
+| `latest` | Latest stable release | `orhunp/git-cliff:latest` |
+| `X.Y.Z` | Specific version (SemVer) | `orhunp/git-cliff:2.7.0` |
+| `main` | Latest from main branch | `orhunp/git-cliff:main` |
+| `sha-<short>` | Specific commit SHA | `orhunp/git-cliff:sha-954106f` |
+
+## Usage Examples
+
+<Steps>
+  <Step title="Basic usage">
+    Run in your git repository:
+    
+    ```bash
+    cd /path/to/your/git/repo
+    docker run -t -v "$(pwd):/app/" orhunp/git-cliff:latest
+    ```
+    
+    This mounts your current directory to `/app/` in the container.
+  </Step>
+  
+  <Step title="Generate changelog">
+    Output to a file:
+    
+    ```bash
+    docker run -t -v "$(pwd):/app/" orhunp/git-cliff:latest -o CHANGELOG.md
+    ```
+  </Step>
+  
+  <Step title="Use custom config">
+    With a custom configuration file:
+    
+    ```bash
+    docker run -t -v "$(pwd):/app/" orhunp/git-cliff:latest --config cliff.toml
+    ```
+  </Step>
+  
+  <Step title="Specific version">
+    Use a specific version:
+    
+    ```bash
+    docker run -t -v "$(pwd):/app/" orhunp/git-cliff:2.7.0
+    ```
+  </Step>
+</Steps>
+
+## Advanced Usage
+
+<Tabs>
+  <Tab title="Shell Alias">
+    Create a convenient shell alias:
+    
+    **Bash/Zsh:**
+    ```bash
+    # Add to ~/.bashrc or ~/.zshrc
+    alias git-cliff='docker run -t -v "$(pwd):/app/" orhunp/git-cliff:latest'
+    ```
+    
+    Then reload:
+    ```bash
+    source ~/.bashrc
+    ```
+    
+    Usage:
+    ```bash
+    git-cliff -o CHANGELOG.md
+    ```
+  </Tab>
+  
+  <Tab title="Docker Compose">
+    Use with Docker Compose:
+    
+    ```yaml docker-compose.yml
+    version: '3.8'
+    
+    services:
+      git-cliff:
+        image: orhunp/git-cliff:latest
+        volumes:
+          - .:/app
+        command: -o CHANGELOG.md
+    ```
+    
+    Run:
+    ```bash
+    docker-compose run git-cliff
+    ```
+  </Tab>
+  
+  <Tab title="CI/CD Pipeline">
+    GitHub Actions example:
+    
+    ```yaml .github/workflows/changelog.yml
+    name: Generate Changelog
+    
+    on:
+      push:
+        tags:
+          - 'v*'
+    
+    jobs:
+      changelog:
+        runs-on: ubuntu-latest
+        container:
+          image: orhunp/git-cliff:latest
+        steps:
+          - uses: actions/checkout@v4
+            with:
+              fetch-depth: 0
+          
+          - name: Generate changelog
+            run: git-cliff -o CHANGELOG.md
+          
+          - name: Upload changelog
+            uses: actions/upload-artifact@v4
+            with:
+              name: changelog
+              path: CHANGELOG.md
+    ```
+    
+    GitLab CI example:
+    ```yaml .gitlab-ci.yml
+    changelog:
+      image: orhunp/git-cliff:latest
+      script:
+        - git-cliff -o CHANGELOG.md
+      artifacts:
+        paths:
+          - CHANGELOG.md
+      only:
+        - tags
+    ```
+  </Tab>
+  
+  <Tab title="Makefile Integration">
+    Add to your Makefile:
+    
+    ```makefile Makefile
+    DOCKER_IMAGE := orhunp/git-cliff:latest
+    
+    .PHONY: changelog
+    changelog:
+    	docker run -t -v "$(PWD):/app/" $(DOCKER_IMAGE) -o CHANGELOG.md
+    
+    .PHONY: changelog-latest
+    changelog-latest:
+    	docker run -t -v "$(PWD):/app/" $(DOCKER_IMAGE) --latest
+    
+    .PHONY: changelog-unreleased
+    changelog-unreleased:
+    	docker run -t -v "$(PWD):/app/" $(DOCKER_IMAGE) --unreleased
+    ```
+    
+    Usage:
+    ```bash
+    make changelog
+    ```
+  </Tab>
+</Tabs>
+
+## Building Custom Images
+
+Build your own Docker image:
+
+<Steps>
+  <Step title="Clone the repository">
+    ```bash
+    git clone https://github.com/orhun/git-cliff.git
+    cd git-cliff
+    ```
+  </Step>
+  
+  <Step title="Build the image">
+    ```bash
+    DOCKER_BUILDKIT=1 docker build -t git-cliff .
+    ```
+    
+    <Note>
+      Using BuildKit enables better caching and faster builds.
+    </Note>
+  </Step>
+  
+  <Step title="Run your custom image">
+    ```bash
+    docker run -t -v "$(pwd):/app/" git-cliff
+    ```
+  </Step>
+</Steps>
+
+## Volume Mounting
+
+Understanding volume mounts:
+
+<CodeGroup>
+  ```bash Mount current directory
+  docker run -t -v "$(pwd):/app/" orhunp/git-cliff:latest
+  ```
+  
+  ```bash Mount specific directory
+  docker run -t -v "/path/to/repo:/app/" orhunp/git-cliff:latest
+  ```
+  
+  ```bash Mount with read-only
+  docker run -t -v "$(pwd):/app/:ro" orhunp/git-cliff:latest
+  ```
+  
+  ```bash Mount config file only
+  docker run -t \
+    -v "$(pwd):/app/" \
+    -v "$(pwd)/cliff.toml:/app/cliff.toml:ro" \
+    orhunp/git-cliff:latest
+  ```
+</CodeGroup>
+
+## Common Commands
+
+<CodeGroup>
+  ```bash Generate full changelog
+  docker run -t -v "$(pwd):/app/" orhunp/git-cliff:latest -o CHANGELOG.md
+  ```
+  
+  ```bash Generate latest changes
+  docker run -t -v "$(pwd):/app/" orhunp/git-cliff:latest --latest
+  ```
+  
+  ```bash Show unreleased changes
+  docker run -t -v "$(pwd):/app/" orhunp/git-cliff:latest --unreleased
+  ```
+  
+  ```bash Generate for specific tag
+  docker run -t -v "$(pwd):/app/" orhunp/git-cliff:latest --tag v1.0.0
+  ```
+  
+  ```bash Use custom config
+  docker run -t -v "$(pwd):/app/" orhunp/git-cliff:latest --config custom-cliff.toml
+  ```
+  
+  ```bash Output to stdout
+  docker run -t -v "$(pwd):/app/" orhunp/git-cliff:latest
+  ```
+</CodeGroup>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Permission denied when writing files">
+    The container runs as a specific user. Fix ownership:
+    
+    ```bash
+    # Run with your user ID
+    docker run -t -v "$(pwd):/app/" --user $(id -u):$(id -g) orhunp/git-cliff:latest
+    ```
+    
+    Or fix permissions after:
+    ```bash
+    sudo chown -R $USER:$USER .
+    ```
+  </Accordion>
+  
+  <Accordion title="Git directory not found">
+    Ensure you're mounting the git repository root:
+    
+    ```bash
+    # Check you're in a git repo
+    git rev-parse --show-toplevel
+    
+    # Run from repo root
+    cd $(git rev-parse --show-toplevel)
+    docker run -t -v "$(pwd):/app/" orhunp/git-cliff:latest
+    ```
+  </Accordion>
+  
+  <Accordion title="Config file not found">
+    Make sure the config file is in the mounted directory:
+    
+    ```bash
+    # List files to verify
+    ls -la cliff.toml
+    
+    # Run with explicit path
+    docker run -t -v "$(pwd):/app/" orhunp/git-cliff:latest --config /app/cliff.toml
+    ```
+  </Accordion>
+  
+  <Accordion title="Image pull fails">
+    If pulling from Docker Hub fails, try GitHub Container Registry:
+    
+    ```bash
+    docker pull ghcr.io/orhun/git-cliff/git-cliff:latest
+    docker run -t -v "$(pwd):/app/" ghcr.io/orhun/git-cliff/git-cliff:latest
+    ```
+    
+    Or authenticate with GitHub:
+    ```bash
+    echo $GITHUB_TOKEN | docker login ghcr.io -u USERNAME --password-stdin
+    ```
+  </Accordion>
+  
+  <Accordion title="Windows path issues">
+    On Windows, use PowerShell:
+    
+    ```powershell
+    docker run -t -v "${PWD}:/app/" orhunp/git-cliff:latest
+    ```
+    
+    Or use WSL2:
+    ```bash
+    docker run -t -v "$(pwd):/app/" orhunp/git-cliff:latest
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Configuration" icon="gear" href="/configuration/overview">
+    Learn how to configure git-cliff
+  </Card>
+  
+  <Card title="CI/CD Integration" icon="circle-nodes" href="/integrations/github-actions">
+    Automate with GitHub Actions
+  </Card>
+</CardGroup>

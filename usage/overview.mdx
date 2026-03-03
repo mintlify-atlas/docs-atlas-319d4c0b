@@ -1,0 +1,119 @@
+---
+title: Usage Overview
+description: Common workflows and usage patterns for git-cliff
+---
+
+git-cliff provides a powerful command-line interface for generating changelogs from your Git history. This section covers the most common workflows and use cases.
+
+## Quick Start
+
+Generate a changelog for your entire repository:
+
+```bash
+git cliff
+```
+
+This command reads your configuration from `cliff.toml` and generates a changelog based on your commit history.
+
+## Common Workflows
+
+### Generating Changelogs for Releases
+
+When preparing a new release, you can generate a changelog for unreleased changes:
+
+```bash
+# Generate changelog for unreleased commits
+git cliff --unreleased
+
+# Generate changelog and tag the release
+git cliff --unreleased --tag v1.0.0
+```
+
+### Updating Existing Changelogs
+
+Prepend new changes to your existing `CHANGELOG.md`:
+
+```bash
+git cliff --unreleased --tag v1.0.0 --prepend CHANGELOG.md
+```
+
+### Version Bumping
+
+Automatically calculate the next semantic version:
+
+```bash
+# Automatically determine version bump
+git cliff --bump
+
+# Get just the version number
+git cliff --bumped-version
+```
+
+### Filtering Commits
+
+Generate changelogs for specific parts of your history:
+
+```bash
+# Only the latest tag
+git cliff --latest
+
+# Specific commit range
+git cliff v1.0.0..v2.0.0
+
+# All unreleased changes
+git cliff --unreleased
+```
+
+## Output Options
+
+### Save to File
+
+```bash
+# Save to CHANGELOG.md (default)
+git cliff -o
+
+# Save to custom file
+git cliff --output HISTORY.md
+```
+
+### Different Formats
+
+```bash
+# JSON context for processing
+git cliff --context
+
+# Custom template
+git cliff --body "{% for commit in commits %}{{ commit.message }}\n{% endfor %}"
+```
+
+## Explore More
+
+<CardGroup cols={2}>
+  <Card title="Basic Usage" icon="terminal" href="/usage/basic-usage">
+    Learn core commands and common patterns
+  </Card>
+  
+  <Card title="CLI Arguments" icon="flag" href="/usage/args">
+    Complete reference of all command-line options
+  </Card>
+  
+  <Card title="Version Bumping" icon="arrow-up" href="/usage/bump-version">
+    Automatically calculate semantic versions
+  </Card>
+  
+  <Card title="Monorepos" icon="folder-tree" href="/usage/monorepos">
+    Generate changelogs for specific paths
+  </Card>
+  
+  <Card title="Submodules" icon="code-branch" href="/usage/submodules">
+    Include submodule commits in changelogs
+  </Card>
+</CardGroup>
+
+## Next Steps
+
+Once you're familiar with the basics, explore:
+
+- [Configuration](/configuration/overview) - Customize changelog format and behavior
+- [Templating](/templating/overview) - Create custom changelog templates
+- [Integration](/integrations/overview) - Integrate with CI/CD pipelines

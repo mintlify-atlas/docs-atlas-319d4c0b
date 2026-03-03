@@ -1,0 +1,376 @@
+---
+title: Install via Homebrew
+description: Install git-cliff on macOS or Linux using Homebrew package manager
+---
+
+# Install via Homebrew
+
+Install git-cliff on macOS or Linux using [Homebrew](https://formulae.brew.sh/formula/git-cliff).
+
+## Quick Install
+
+```bash
+brew install git-cliff
+```
+
+## Prerequisites
+
+<Steps>
+  <Step title="Install Homebrew">
+    If you don't have Homebrew installed, install it first:
+    
+    **macOS/Linux:**
+    ```bash
+    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+    ```
+    
+    Verify installation:
+    ```bash
+    brew --version
+    ```
+  </Step>
+  
+  <Step title="Update Homebrew">
+    Ensure Homebrew is up to date:
+    
+    ```bash
+    brew update
+    ```
+  </Step>
+</Steps>
+
+## Installation Steps
+
+<Steps>
+  <Step title="Install git-cliff">
+    ```bash
+    brew install git-cliff
+    ```
+    
+    This will:
+    - Download the latest version from Homebrew
+    - Install git-cliff to `/opt/homebrew/bin/` (Apple Silicon) or `/usr/local/bin/` (Intel)
+    - Set up necessary symlinks
+  </Step>
+  
+  <Step title="Verify installation">
+    ```bash
+    git-cliff --version
+    ```
+    
+    Expected output:
+    ```
+    git-cliff 2.7.0
+    ```
+  </Step>
+  
+  <Step title="Test in a repository">
+    ```bash
+    cd /path/to/your/git/repo
+    git-cliff --help
+    ```
+  </Step>
+</Steps>
+
+## Formula Information
+
+<Tabs>
+  <Tab title="Formula Details">
+    View formula information:
+    
+    ```bash
+    brew info git-cliff
+    ```
+    
+    This shows:
+    - Current version
+    - Installation path
+    - Dependencies
+    - Homepage and description
+  </Tab>
+  
+  <Tab title="Installed Files">
+    See where git-cliff is installed:
+    
+    ```bash
+    brew list git-cliff
+    ```
+    
+    Typical paths:
+    - **Apple Silicon:** `/opt/homebrew/Cellar/git-cliff/`
+    - **Intel Mac:** `/usr/local/Cellar/git-cliff/`
+  </Tab>
+  
+  <Tab title="Dependencies">
+    Check dependencies:
+    
+    ```bash
+    brew deps git-cliff
+    ```
+    
+    View dependency tree:
+    ```bash
+    brew deps --tree git-cliff
+    ```
+  </Tab>
+</Tabs>
+
+## Managing Homebrew Installation
+
+<CodeGroup>
+  ```bash Update
+  # Update Homebrew and upgrade git-cliff
+  brew update && brew upgrade git-cliff
+  
+  # Upgrade all packages
+  brew upgrade
+  ```
+  
+  ```bash Reinstall
+  # Reinstall git-cliff
+  brew reinstall git-cliff
+  ```
+  
+  ```bash Uninstall
+  # Remove git-cliff
+  brew uninstall git-cliff
+  
+  # Remove with dependencies
+  brew uninstall git-cliff --ignore-dependencies
+  ```
+  
+  ```bash Pin Version
+  # Prevent git-cliff from being upgraded
+  brew pin git-cliff
+  
+  # Allow upgrades again
+  brew unpin git-cliff
+  ```
+  
+  ```bash Check Status
+  # Check if outdated
+  brew outdated git-cliff
+  
+  # Check installation status
+  brew list | grep git-cliff
+  ```
+</CodeGroup>
+
+## Platform-Specific Notes
+
+<Tabs>
+  <Tab title="macOS">
+    ### Apple Silicon (M1/M2/M3)
+    
+    Homebrew installs to `/opt/homebrew/` on Apple Silicon:
+    
+    ```bash
+    which git-cliff
+    # /opt/homebrew/bin/git-cliff
+    ```
+    
+    Ensure `/opt/homebrew/bin` is in your PATH:
+    ```bash
+    echo 'export PATH="/opt/homebrew/bin:$PATH"' >> ~/.zshrc
+    source ~/.zshrc
+    ```
+    
+    ### Intel Macs
+    
+    Homebrew installs to `/usr/local/` on Intel Macs:
+    
+    ```bash
+    which git-cliff
+    # /usr/local/bin/git-cliff
+    ```
+    
+    This path is typically in PATH by default.
+    
+    <Note>
+      If you're on Apple Silicon and see "Bad CPU type in executable", you may be running the Intel version. Reinstall:
+      ```bash
+      brew reinstall git-cliff
+      ```
+    </Note>
+  </Tab>
+  
+  <Tab title="Linux">
+    ### Homebrew on Linux
+    
+    On Linux, Homebrew installs to `/home/linuxbrew/.linuxbrew/`:
+    
+    ```bash
+    which git-cliff
+    # /home/linuxbrew/.linuxbrew/bin/git-cliff
+    ```
+    
+    Add to PATH if needed:
+    ```bash
+    echo 'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"' >> ~/.bashrc
+    source ~/.bashrc
+    ```
+    
+    ### Dependencies
+    
+    Homebrew may require build dependencies on Linux:
+    ```bash
+    sudo apt-get install build-essential procps curl file git
+    ```
+  </Tab>
+</Tabs>
+
+## Alternative: Homebrew Tap
+
+If the official formula is outdated, you can use a tap (custom formula):
+
+```bash
+# Add a custom tap (example)
+brew tap orhun/git-cliff
+brew install orhun/git-cliff/git-cliff
+```
+
+<Note>
+  This is only needed if there's a custom tap available. The official formula is usually sufficient.
+</Note>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Homebrew command not found">
+    Add Homebrew to your PATH:
+    
+    **Apple Silicon:**
+    ```bash
+    echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> ~/.zshrc
+    source ~/.zshrc
+    ```
+    
+    **Intel Mac:**
+    ```bash
+    echo 'eval "$(/usr/local/bin/brew shellenv)"' >> ~/.zshrc
+    source ~/.zshrc
+    ```
+    
+    **Linux:**
+    ```bash
+    echo 'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"' >> ~/.bashrc
+    source ~/.bashrc
+    ```
+  </Accordion>
+  
+  <Accordion title="Formula not found">
+    Update Homebrew's formula list:
+    
+    ```bash
+    brew update
+    ```
+    
+    If still not found, search for it:
+    ```bash
+    brew search git-cliff
+    ```
+  </Accordion>
+  
+  <Accordion title="Permission denied errors">
+    Fix Homebrew permissions:
+    
+    ```bash
+    sudo chown -R $(whoami) /opt/homebrew/*  # Apple Silicon
+    # or
+    sudo chown -R $(whoami) /usr/local/*     # Intel Mac
+    ```
+    
+    Or reinstall Homebrew:
+    ```bash
+    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/uninstall.sh)"
+    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+    ```
+  </Accordion>
+  
+  <Accordion title="git-cliff command not found after installation">
+    Check if git-cliff is installed:
+    
+    ```bash
+    brew list git-cliff
+    ```
+    
+    Find where it's installed:
+    ```bash
+    brew --prefix git-cliff
+    ```
+    
+    Add to PATH manually:
+    ```bash
+    export PATH="$(brew --prefix)/bin:$PATH"
+    ```
+  </Accordion>
+  
+  <Accordion title="Version conflicts">
+    If you have multiple installations:
+    
+    ```bash
+    # Check all git-cliff locations
+    which -a git-cliff
+    
+    # Use Homebrew version explicitly
+    $(brew --prefix)/bin/git-cliff --version
+    
+    # Remove other installations if needed
+    # (cargo, npm, etc.)
+    ```
+  </Accordion>
+  
+  <Accordion title="Homebrew is slow on macOS">
+    Speed up Homebrew updates:
+    
+    ```bash
+    # Disable auto-update
+    export HOMEBREW_NO_AUTO_UPDATE=1
+    
+    # Add to shell config for permanent effect
+    echo 'export HOMEBREW_NO_AUTO_UPDATE=1' >> ~/.zshrc
+    ```
+    
+    Update manually when needed:
+    ```bash
+    brew update
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Keeping Updated
+
+Homebrew makes updates easy:
+
+```bash
+# Update Homebrew and check for outdated packages
+brew update
+brew outdated
+
+# Upgrade git-cliff specifically
+brew upgrade git-cliff
+
+# Or upgrade all packages
+brew upgrade
+```
+
+Automate updates with a script:
+```bash
+#!/bin/bash
+# save as ~/bin/brew-update.sh
+brew update
+brew upgrade
+brew cleanup
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Configuration" icon="gear" href="/configuration/overview">
+    Configure git-cliff for your project
+  </Card>
+  
+  <Card title="Usage Examples" icon="book" href="/usage/basic-usage">
+    Learn how to use git-cliff
+  </Card>
+</CardGroup>

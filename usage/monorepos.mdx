@@ -1,0 +1,407 @@
+---
+title: Monorepos
+description: Generate changelogs for specific packages and paths in monorepo projects
+---
+
+git-cliff supports generating changelogs for monorepo projects by filtering commits based on file paths. This allows you to create package-specific changelogs in repositories containing multiple projects.
+
+## Basic Path Filtering
+
+Generate a changelog for a specific directory by switching to that directory:
+
+```bash
+cd packages/some_library
+git cliff
+```
+
+This generates a changelog including only commits that affect files in the current directory and its subdirectories.
+
+## Include and Exclude Paths
+
+Use `--include-path` and `--exclude-path` for fine-grained control over which commits to include:
+
+```bash
+cd packages/some_library
+git cliff --include-path "packages/some_library/**/*" --exclude-path ".github/*"
+```
+
+<Note>
+Path patterns:
+- Must be relative to the repository root
+- Must be valid glob patterns
+- Can be specified multiple times
+</Note>
+
+## Path Pattern Examples
+
+### Include Specific Package
+
+```bash
+# Include only commits affecting the API package
+git cliff --include-path "packages/api/**/*"
+```
+
+### Include Multiple Paths
+
+```bash
+# Include commits from multiple packages
+git cliff --include-path "packages/api/**/*" \
+  --include-path "packages/core/**/*"
+```
+
+### Exclude Specific Files
+
+```bash
+# Exclude documentation and test files
+git cliff --include-path "packages/api/**/*" \
+  --exclude-path "**/*.md" \
+  --exclude-path "**/tests/**/*"
+```
+
+### Complex Filtering
+
+```bash
+# Include source files, exclude generated and config files
+git cliff --include-path "packages/api/src/**/*" \
+  --exclude-path "**/*.config.js" \
+  --exclude-path "**/dist/**/*" \
+  --exclude-path "**/node_modules/**/*"
+```
+
+## Monorepo Workflows
+
+### Generate Changelog for Each Package
+
+Create separate changelogs for each package in your monorepo:
+
+```bash
+#!/bin/bash
+
+# Define packages
+PACKAGES=("api" "core" "utils" "cli")
+
+for pkg in "${PACKAGES[@]}"; do
+  echo "Generating changelog for $pkg..."
+  
+  git cliff \
+    --include-path "packages/$pkg/**/*" \
+    --tag "$pkg-v$(cat packages/$pkg/package.json | jq -r .version)" \
+    --output "packages/$pkg/CHANGELOG.md"
+done
+```
+
+### Release Specific Package
+
+Release a single package from a monorepo:
+
+```bash
+# Calculate next version for the package
+VERSION=$(git cliff --bumped-version --include-path "packages/api/**/*")
+
+# Generate changelog
+git cliff --bump \
+  --include-path "packages/api/**/*" \
+  --tag "api-v$VERSION" \
+  --unreleased \
+  --output packages/api/CHANGELOG.md
+
+# Update package version and commit
+cd packages/api
+npm version $VERSION
+git add .
+git commit -m "chore(api): release v$VERSION"
+git tag "api-v$VERSION"
+```
+
+### Root Changelog with All Packages
+
+Generate a root-level changelog that includes all packages:
+
+```bash
+git cliff --include-path "packages/**/*" -o CHANGELOG.md
+```
+
+## Repository Context
+
+When using the `--repository` flag with multiple repositories, you can use the `{{ repository }}` variable in your template to identify which changes belong to which repository:
+
+```toml
+# cliff.toml
+[changelog]
+body = """
+{% for group, commits in commits | group_by(attribute="group") %}
+  ### {{ group | upper_first }}
+  {% for commit in commits %}
+    - {{ commit.message }} ({{ commit.repository }})
+  {% endfor %}
+{% endfor %}
+"""
+```
+
+See [template context](/templating/context) for more information.
+
+## Practical Examples
+
+### Workspace with Scoped Packages
+
+```bash
+# Project structure:
+# packages/
+#   @company/api/
+#   @company/core/
+#   @company/utils/
+
+# Generate changelog for @company/api
+git cliff --include-path "packages/@company/api/**/*" \
+  --tag "@company/api@1.0.0" \
+  -o packages/@company/api/CHANGELOG.md
+```
+
+### Frontend and Backend Monorepo
+
+```bash
+# Project structure:
+# apps/
+#   frontend/
+#   backend/
+#   mobile/
+
+# Generate frontend changelog
+git cliff --include-path "apps/frontend/**/*" \
+  --exclude-path "apps/frontend/public/**/*" \
+  --tag "frontend-v2.0.0" \
+  -o apps/frontend/CHANGELOG.md
+
+# Generate backend changelog
+git cliff --include-path "apps/backend/**/*" \
+  --exclude-path "apps/backend/tests/**/*" \
+  --tag "backend-v1.5.0" \
+  -o apps/backend/CHANGELOG.md
+```
+
+### Shared Libraries
+
+```bash
+# Project structure:
+# libs/
+#   shared/
+#   components/
+# apps/
+#   web/
+#   mobile/
+
+# Generate changelog including shared code
+git cliff --include-path "apps/web/**/*" \
+  --include-path "libs/shared/**/*" \
+  --include-path "libs/components/**/*" \
+  -o apps/web/CHANGELOG.md
+```
+
+## CI/CD Integration
+
+### Detect Changed Packages
+
+```bash
+#!/bin/bash
+# detect-changes.sh
+
+# Get changed files since last release
+CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD)
+
+# Determine which packages changed
+if echo "$CHANGED_FILES" | grep -q "^packages/api/"; then
+  echo "api" >> changed-packages.txt
+fi
+
+if echo "$CHANGED_FILES" | grep -q "^packages/core/"; then
+  echo "core" >> changed-packages.txt
+fi
+
+# Generate changelogs only for changed packages
+while read package; do
+  git cliff --include-path "packages/$package/**/*" \
+    --bump --unreleased \
+    -o "packages/$package/CHANGELOG.md"
+done < changed-packages.txt
+```
+
+### GitHub Actions Workflow
+
+```yaml
+# .github/workflows/release-package.yml
+name: Release Package
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'packages/api/**'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      
+      - name: Install git-cliff
+        run: |
+          wget https://github.com/orhun/git-cliff/releases/latest/download/git-cliff-x86_64-unknown-linux-gnu.tar.gz
+          tar -xzf git-cliff-*.tar.gz
+          sudo mv git-cliff /usr/local/bin/
+      
+      - name: Get package version
+        id: version
+        run: |
+          VERSION=$(git cliff --bumped-version --include-path "packages/api/**/*")
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+      
+      - name: Generate changelog
+        run: |
+          git cliff --bump \
+            --include-path "packages/api/**/*" \
+            --tag "api-v${{ steps.version.outputs.version }}" \
+            --unreleased \
+            -o packages/api/CHANGELOG.md
+      
+      - name: Create Release
+        uses: actions/create-release@v1
+        with:
+          tag_name: api-v${{ steps.version.outputs.version }}
+          release_name: API v${{ steps.version.outputs.version }}
+```
+
+## Environment Variables
+
+Set path filters via environment variables:
+
+```bash
+# Set include path
+export GIT_CLIFF_INCLUDE_PATH="packages/api/**/*"
+
+# Set exclude path
+export GIT_CLIFF_EXCLUDE_PATH="**/*.md"
+
+# Generate changelog
+git cliff
+```
+
+Multiple paths with environment variables:
+
+```bash
+export GIT_CLIFF_INCLUDE_PATH="packages/api/**/* packages/core/**/*"
+git cliff
+```
+
+## Configuration File
+
+Define path filters in your `cliff.toml`:
+
+```toml
+[git]
+commit_parsers = [
+  { message = "^feat", group = "Features" },
+  { message = "^fix", group = "Bug Fixes" },
+]
+
+filter_commits = true
+
+# This can be overridden with --include-path
+# include_path = "packages/api/**/*"
+```
+
+<Note>
+Command-line arguments override configuration file settings.
+</Note>
+
+## Advanced Patterns
+
+### Glob Pattern Reference
+
+```bash
+# Match all files in a directory
+"packages/api/*"
+
+# Match all files recursively
+"packages/api/**/*"
+
+# Match specific file types
+"packages/api/**/*.js"
+"packages/api/**/*.{js,ts}"
+
+# Match multiple levels
+"packages/*/src/**/*"
+
+# Exclude pattern
+"!packages/api/dist/**/*"
+```
+
+### Negative Patterns
+
+```bash
+# Include everything except tests and docs
+git cliff --include-path "packages/api/**/*" \
+  --exclude-path "**/test/**/*" \
+  --exclude-path "**/tests/**/*" \
+  --exclude-path "**/__tests__/**/*" \
+  --exclude-path "**/*.test.js" \
+  --exclude-path "**/*.spec.js" \
+  --exclude-path "**/*.md"
+```
+
+## Troubleshooting
+
+### No Commits Found
+
+If git-cliff doesn't find any commits:
+
+```bash
+# Verify pattern matches files
+git log --oneline --name-only | grep -E "packages/api/"
+
+# Check pattern syntax
+ls packages/api/**/*
+
+# Use absolute path from repo root
+git cliff --include-path "packages/api/**/*"
+```
+
+### Path Patterns Not Working
+
+Ensure:
+- Paths are relative to repository root, not current directory
+- Patterns use forward slashes (`/`) even on Windows
+- Patterns are quoted to prevent shell expansion
+- Glob patterns are valid
+
+```bash
+# Wrong - relative to current directory
+cd packages/api
+git cliff --include-path "src/**/*"  # Won't work
+
+# Correct - relative to repo root
+cd packages/api
+git cliff --include-path "packages/api/src/**/*"  # Works
+```
+
+### Commits Excluded Unexpectedly
+
+If commits are being excluded:
+
+```bash
+# Test your patterns
+git log --all --name-only --pretty=format: | \
+  grep -E "^packages/api/" | \
+  sort -u
+
+# Use verbose mode to debug
+git cliff -vv --include-path "packages/api/**/*"
+```
+
+## See Also
+
+- [Basic Usage](/usage/basic-usage) - Core git-cliff commands
+- [CLI Arguments](/usage/args) - Complete argument reference
+- [Multiple Repositories](/usage/monorepos) - Working with multiple repos
+- [Submodules](/usage/submodules) - Including submodule commits

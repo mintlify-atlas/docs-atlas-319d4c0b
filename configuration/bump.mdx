@@ -1,0 +1,333 @@
+---
+title: Bump Configuration
+description: Configure semantic version bumping rules for automatic version increments
+---
+
+The `[bump]` section controls how git-cliff calculates the next version number based on commit history using semantic versioning rules.
+
+## Semantic Versioning
+
+git-cliff follows [Semantic Versioning](https://semver.org/) (SemVer) principles:
+
+- **Major** (X.0.0) - Breaking changes
+- **Minor** (0.X.0) - New features (backward compatible)
+- **Patch** (0.0.X) - Bug fixes (backward compatible)
+
+## Configuration Options
+
+<ParamField path="features_always_bump_minor" type="boolean" optional>
+  Configure how feature commits affect version increments.
+  
+  - `true` - Features always trigger a minor version update
+  - `false` (default) - Features trigger:
+    - Patch version update if major version is 0
+    - Minor version update otherwise
+  
+  **Example:**
+  ```toml
+  [bump]
+  features_always_bump_minor = true
+  ```
+  
+  **Behavior:**
+  - With `true`: `0.1.0` → `0.2.0` (feature commit)
+  - With `false`: `0.1.0` → `0.1.1` (feature commit)
+  - With `true`: `1.0.0` → `1.1.0` (feature commit)
+  - With `false`: `1.0.0` → `1.1.0` (feature commit)
+</ParamField>
+
+<ParamField path="breaking_always_bump_major" type="boolean" optional>
+  Configure how breaking changes affect version increments from 0.x to 1.0.
+  
+  - `true` - Breaking changes always trigger major version update (including 0.x → 1.0)
+  - `false` (default) - Breaking changes trigger:
+    - Minor version update if major version is 0
+    - Major version update otherwise
+  
+  **Example:**
+  ```toml
+  [bump]
+  breaking_always_bump_major = true
+  ```
+  
+  **Behavior:**
+  - With `true`: `0.9.0` → `1.0.0` (breaking commit)
+  - With `false`: `0.9.0` → `0.10.0` (breaking commit)
+  - With `true`: `1.5.0` → `2.0.0` (breaking commit)
+  - With `false`: `1.5.0` → `2.0.0` (breaking commit)
+</ParamField>
+
+<ParamField path="initial_tag" type="string" optional>
+  Set the initial version when no tags are found in the repository.
+  
+  If not set, defaults to `0.1.0`.
+  
+  **Example:**
+  ```toml
+  [bump]
+  initial_tag = "1.0.0"
+  ```
+</ParamField>
+
+<ParamField path="custom_major_increment_regex" type="string" optional>
+  Custom regex pattern for commit types that should trigger major version increments.
+  
+  Matches against the commit type (first word before colon in conventional commits).
+  
+  **Note:** Commit type according to spec is only `[a-zA-Z]+`
+  
+  **Example:**
+  ```toml
+  [bump]
+  custom_major_increment_regex = "major|breaking"
+  ```
+  
+  Now commits like `major: redesign API` will trigger a major version bump.
+</ParamField>
+
+<ParamField path="custom_minor_increment_regex" type="string" optional>
+  Custom regex pattern for commit types that should trigger minor version increments.
+  
+  Matches against the commit type (first word before colon in conventional commits).
+  
+  **Example:**
+  ```toml
+  [bump]
+  custom_minor_increment_regex = "minor|feature|add"
+  ```
+  
+  Now commits like `add: new feature` will trigger a minor version bump.
+</ParamField>
+
+<ParamField path="bump_type" type="string" optional>
+  Force all version bumps to a specific type, regardless of commit content.
+  
+  Allowed values:
+  - `major`
+  - `minor`
+  - `patch`
+  
+  **Example:**
+  ```toml
+  [bump]
+  bump_type = "minor"
+  ```
+  
+  This forces every version bump to be a minor increment.
+</ParamField>
+
+## Usage Examples
+
+### Standard SemVer Configuration
+
+```toml
+[bump]
+features_always_bump_minor = true
+breaking_always_bump_major = true
+initial_tag = "0.1.0"
+```
+
+This follows strict semantic versioning:
+- Features → minor bump
+- Breaking changes → major bump (even from 0.x)
+- Fixes → patch bump
+
+### Pre-1.0 Development
+
+```toml
+[bump]
+features_always_bump_minor = false
+breaking_always_bump_major = false
+initial_tag = "0.1.0"
+```
+
+This keeps the project in 0.x for pre-1.0 development:
+- Features → patch bump in 0.x
+- Breaking changes → minor bump in 0.x
+
+### Custom Commit Types
+
+```toml
+[bump]
+features_always_bump_minor = true
+breaking_always_bump_major = true
+custom_major_increment_regex = "major"
+custom_minor_increment_regex = "minor|more"
+```
+
+With this configuration:
+
+```bash
+# Git history
+git log --oneline
+# 5189568 major: redesign API
+# 0b17b48 (tag: 0.1.0) initial commit
+
+# Calculate next version
+git cliff --bumped-version
+# Output: 1.0.0
+```
+
+Another example:
+
+```bash
+# Git history  
+git log --oneline
+# 47206d0 more: add new feature
+# 0b17b48 (tag: 0.1.0) initial commit
+
+# Calculate next version
+git cliff --bumped-version
+# Output: 0.2.0
+```
+
+### Force Specific Bump Type
+
+```toml
+[bump]
+bump_type = "patch"
+```
+
+Useful for hotfix releases where you always want patch increments regardless of commit types.
+
+## Command Line Usage
+
+### Calculate Next Version
+
+Use `--bumped-version` to calculate the next version without generating a changelog:
+
+```bash
+git cliff --bumped-version
+```
+
+Output: `1.2.0`
+
+### Generate Changelog for Next Version
+
+```bash
+git cliff --bump
+```
+
+This generates a changelog for the calculated next version.
+
+### Combine with Tags
+
+```bash
+# Get next version
+NEXT_VERSION=$(git cliff --bumped-version)
+
+# Create and push tag
+git tag "v${NEXT_VERSION}"
+git push origin "v${NEXT_VERSION}"
+
+# Generate changelog
+git cliff --tag "v${NEXT_VERSION}" --output CHANGELOG.md
+```
+
+## Version Bump Logic
+
+The version bump is determined by analyzing commits since the last tag:
+
+1. **Breaking Changes** (commits with `BREAKING CHANGE:` footer or `!` after type/scope):
+   - Major bump (if `breaking_always_bump_major = true` or version ≥ 1.0.0)
+   - Minor bump (if `breaking_always_bump_major = false` and version < 1.0.0)
+
+2. **Features** (commits with `feat` type):
+   - Minor bump (if `features_always_bump_minor = true` or version ≥ 1.0.0)
+   - Patch bump (if `features_always_bump_minor = false` and version < 1.0.0)
+
+3. **Fixes** (commits with `fix` type):
+   - Patch bump
+
+4. **Custom Patterns**:
+   - Major bump (if matches `custom_major_increment_regex`)
+   - Minor bump (if matches `custom_minor_increment_regex`)
+
+5. **Forced Bump**:
+   - Use `bump_type` if configured
+
+## Integration with CI/CD
+
+### Automated Releases
+
+```yaml
+# .github/workflows/release.yml
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Install git-cliff
+        run: |
+          curl -sL https://github.com/orhun/git-cliff/releases/latest/download/git-cliff-x86_64-unknown-linux-gnu.tar.gz | tar xz
+          sudo mv git-cliff /usr/local/bin/
+      
+      - name: Calculate next version
+        id: version
+        run: |
+          echo "version=$(git cliff --bumped-version)" >> $GITHUB_OUTPUT
+      
+      - name: Create tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag "v${{ steps.version.outputs.version }}"
+          git push origin "v${{ steps.version.outputs.version }}"
+      
+      - name: Generate changelog
+        run: |
+          git cliff --tag "v${{ steps.version.outputs.version }}" --output CHANGELOG.md
+      
+      - name: Create release
+        uses: ncipollo/release-action@v1
+        with:
+          tag: v${{ steps.version.outputs.version }}
+          bodyFile: CHANGELOG.md
+```
+
+## Complete Example
+
+```toml
+[changelog]
+header = "# Changelog\n"
+body = """
+{% if version %}\n    ## {{ version | trim_start_matches(pat="v") }} - {{ timestamp | date(format="%Y-%m-%d") }}
+{% else %}\n    ## Unreleased
+{% endif %}\n{% for group, commits in commits | group_by(attribute="group") %}
+    ### {{ group | upper_first }}
+    {% for commit in commits %}
+        - {{ commit.message | upper_first }}
+    {% endfor %}
+{% endfor %}\n
+"""
+trim = true
+
+[git]
+conventional_commits = true
+filter_unconventional = true
+commit_parsers = [
+  { message = "^feat", group = "Features" },
+  { message = "^fix", group = "Bug Fixes" },
+  { message = "^doc", group = "Documentation" },
+]
+
+[bump]
+features_always_bump_minor = true
+breaking_always_bump_major = true
+initial_tag = "0.1.0"
+```
+
+## See Also
+
+- [Semantic Versioning Specification](https://semver.org/)
+- [Conventional Commits](https://www.conventionalcommits.org/)
+- [Git Configuration](/configuration/git)

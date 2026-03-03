@@ -1,0 +1,421 @@
+---
+title: Git Configuration
+description: Configure commit parsing, filtering, and git-specific options
+---
+
+The `[git]` section contains parsing and git-related configuration options that control how commits are processed and included in the changelog.
+
+## Conventional Commits
+
+<ParamField path="conventional_commits" type="boolean" default="false">
+  Parse commits according to the [Conventional Commits](https://www.conventionalcommits.org) specification.
+  
+  Conventional commits follow this format:
+  ```
+  <type>[optional scope]: <description>
+  
+  [optional body]
+  
+  [optional footer(s)]
+  ```
+  
+  **Example:**
+  ```toml
+  [git]
+  conventional_commits = true
+  ```
+</ParamField>
+
+<ParamField path="filter_unconventional" type="boolean" default="false">
+  Exclude commits that don't match the conventional commits specification.
+  
+  **Example:**
+  ```toml
+  [git]
+  conventional_commits = true
+  filter_unconventional = true
+  ```
+</ParamField>
+
+<ParamField path="require_conventional" type="boolean" default="false">
+  Require all commits to be conventional. If any unconventional commits are found, changelog generation fails.
+  
+  Takes precedence over `filter_unconventional`. Checking occurs after `commit_parsers` are applied.
+  
+  **Example:**
+  ```toml
+  [git]
+  conventional_commits = true
+  require_conventional = true
+  ```
+</ParamField>
+
+<ParamField path="split_commits" type="boolean" default="false">
+  Split commits on newlines, treating each line as an individual commit.
+  
+  **Note:** This violates conventional commits specification.
+  
+  **Example:**
+  ```toml
+  [git]
+  split_commits = false
+  ```
+</ParamField>
+
+## Commit Processing
+
+<ParamField path="commit_preprocessors" type="array" optional>
+  Regex-based preprocessors to modify commit messages before parsing.
+  
+  Each preprocessor has:
+  - `pattern` - Regex pattern to match
+  - `replace` - Replacement string (optional)
+  - `replace_command` - Shell command for replacement (optional)
+  
+  **Examples:**
+  ```toml
+  [git]
+  commit_preprocessors = [
+    # Remove PR merge prefix
+    { pattern = 'Merged PR #[0-9]: (.*)', replace = "$1" },
+    
+    # Replace issue numbers with links
+    { pattern = '\\(#([0-9]+)\\)', replace = "([#${1}](<REPO>/issues/${1}))" },
+    
+    # Fix spelling with typos
+    { pattern = '.*', replace_command = 'typos --write-changes -' },
+    
+    # Use git to get full commit message
+    { pattern = '.*', replace_command = 'git show -s --format=%B $COMMIT_SHA' },
+  ]
+  ```
+</ParamField>
+
+<ParamField path="commit_parsers" type="array" optional>
+  Regex-based parsers for extracting data from commits and assigning them to groups.
+  
+  Each parser can match on:
+  - `message` - Commit message (description)
+  - `body` - Commit body
+  - `footer` - Commit footer
+  - `sha` - Commit SHA
+  - `field` - Any commit field (e.g., `author.name`)
+  
+  And can set:
+  - `group` - Group name for the commit
+  - `scope` - Override commit scope
+  - `default_scope` - Default scope if none exists
+  - `skip` - Skip this commit
+  
+  **Examples:**
+  ```toml
+  [git]
+  commit_parsers = [
+    # Group by commit type
+    { message = "^feat", group = "Features" },
+    { message = "^fix", group = "Bug Fixes" },
+    { message = "^doc", group = "Documentation" },
+    { message = "^perf", group = "Performance" },
+    { message = "^refactor", group = "Refactor" },
+    { message = "^style", group = "Styling" },
+    { message = "^test", group = "Testing" },
+    { message = "^chore|^ci", group = "Miscellaneous Tasks" },
+    
+    # Skip certain commits
+    { message = "^chore\\(release\\): prepare for", skip = true },
+    { message = "^chore\\(deps.*\\)", skip = true },
+    
+    # Match on body
+    { body = ".*security", group = "Security" },
+    
+    # Match on footer
+    { footer = "^changelog: ?ignore", skip = true },
+    
+    # Use scope in group name
+    { message = '^fix\\((.*)\\)', group = 'Fix (${1})' },
+    
+    # Set default scope
+    { message = "^doc", group = "Documentation", default_scope = "other" },
+    
+    # Override scope
+    { message = "(www)", scope = "Application" },
+    
+    # Skip specific commit by SHA
+    { sha = "f6f2472bdf0bbb5f9fcaf2d72c1fa9f98f772bb2", skip = true },
+    
+    # Match on commit field
+    { field = "author.name", pattern = "John Doe", group = "John's stuff" },
+  ]
+  ```
+</ParamField>
+
+<ParamField path="protect_breaking_commits" type="boolean" default="false">
+  Prevent commits with breaking changes from being skipped by commit parsers.
+  
+  **Example:**
+  ```toml
+  [git]
+  protect_breaking_commits = true
+  ```
+</ParamField>
+
+<ParamField path="filter_commits" type="boolean" default="false">
+  Filter out commits that are not matched by any commit parser.
+  
+  **Example:**
+  ```toml
+  [git]
+  filter_commits = false
+  ```
+</ParamField>
+
+<ParamField path="fail_on_unmatched_commit" type="boolean" default="false">
+  Fail with a non-zero exit code if any commit is not matched by commit parsers.
+  
+  Useful to enforce that all commits are classified. Commits explicitly skipped (with `skip = true`) are not considered unmatched.
+  
+  **Example:**
+  ```toml
+  [git]
+  fail_on_unmatched_commit = true
+  ```
+</ParamField>
+
+## Tag Configuration
+
+<ParamField path="tag_pattern" type="string" optional>
+  Regex pattern for matching git tags that represent releases.
+  
+  Can be overridden with `--tag-pattern` argument.
+  
+  **Example:**
+  ```toml
+  [git]
+  tag_pattern = "v[0-9].*"
+  ```
+</ParamField>
+
+<ParamField path="skip_tags" type="string" optional>
+  Regex pattern to skip processing matched tags.
+  
+  Commits from skipped tags are dropped from the changelog.
+  
+  Can be overridden with `--skip-tags` argument.
+  
+  **Example:**
+  ```toml
+  [git]
+  skip_tags = "beta|alpha"
+  ```
+</ParamField>
+
+<ParamField path="ignore_tags" type="string" optional>
+  Regex pattern to exclude matched tags after applying `tag_pattern`.
+  
+  Unlike `skip_tags`, commits from ignored tags are included in the next tag.
+  
+  **Note:** If a commit has multiple tags and any tag matches, all associated tags are ignored.
+  
+  Can be overridden with `--ignore-tags` argument.
+  
+  **Example:**
+  ```toml
+  [git]
+  ignore_tags = "rc|v2.1.0|v2.1.1"
+  ```
+</ParamField>
+
+<ParamField path="count_tags" type="string" optional>
+  Regex pattern to count only matched tags in the final result.
+  
+  Works like an inverted version of `ignore_tags` - includes all commits but only counts specific tags.
+  
+  Can be overridden with `--count-tags` argument.
+  
+  **Example:**
+  ```toml
+  [git]
+  count_tags = "v[0-9]+\\.[0-9]+\\.[0-9]+$"
+  ```
+</ParamField>
+
+<ParamField path="use_branch_tags" type="boolean" default="false">
+  Include only tags that belong to the current branch.
+  
+  **Example:**
+  ```toml
+  [git]
+  use_branch_tags = false
+  ```
+</ParamField>
+
+## Commit Ordering
+
+<ParamField path="topo_order" type="boolean" default="false">
+  Process tags in topological order instead of chronological.
+  
+  Can also be set with `--topo-order` flag.
+  
+  **Example:**
+  ```toml
+  [git]
+  topo_order = false
+  ```
+</ParamField>
+
+<ParamField path="topo_order_commits" type="boolean" default="true">
+  Process commits in topological order instead of chronological.
+  
+  - `false` - Equivalent to `git log`
+  - `true` - Equivalent to `git log --topo-order`
+  
+  **Example:**
+  ```toml
+  [git]
+  topo_order_commits = true
+  ```
+</ParamField>
+
+<ParamField path="sort_commits" type="string" default="oldest">
+  Sort commits within each group/release.
+  
+  Allowed values:
+  - `oldest` - Oldest commits first
+  - `newest` - Newest commits first
+  
+  Can be overridden with `--sort` argument.
+  
+  **Example:**
+  ```toml
+  [git]
+  sort_commits = "newest"
+  ```
+</ParamField>
+
+## Link Parsing
+
+<ParamField path="link_parsers" type="array" optional>
+  Extract external references from commits and convert them to URLs.
+  
+  Each link parser has:
+  - `pattern` - Regex pattern to match
+  - `href` - URL template (with capture group substitution)
+  - `text` - Link text template (optional)
+  
+  **Examples:**
+  ```toml
+  [git]
+  link_parsers = [
+    # GitHub issues and PRs
+    { pattern = "#(\\d+)", href = "https://github.com/orhun/git-cliff/issues/$1" },
+    
+    # IETF RFCs with custom text
+    { pattern = "RFC(\\d+)", text = "ietf-rfc$1", href = "https://datatracker.ietf.org/doc/html/rfc$1" },
+  ]
+  ```
+  
+  Extracted links are available in templates via `commit.links`.
+</ParamField>
+
+## Advanced Options
+
+<ParamField path="limit_commits" type="integer" optional>
+  Limit the total number of commits included in the changelog.
+  
+  **Example:**
+  ```toml
+  [git]
+  limit_commits = 100
+  ```
+</ParamField>
+
+<ParamField path="recurse_submodules" type="boolean" optional>
+  Read and process commits from submodules (depth 1 only).
+  
+  Submodule commits are available in templates via `submodule_commits`.
+  
+  **Example:**
+  ```toml
+  [git]
+  recurse_submodules = true
+  ```
+</ParamField>
+
+<ParamField path="include_paths" type="array" optional>
+  Include only commits that modify files matching these glob patterns.
+  
+  **Note:** When set, the current working directory is not included by default.
+  
+  **Example:**
+  ```toml
+  [git]
+  include_paths = ["src/", "doc/**/*.md"]
+  ```
+</ParamField>
+
+<ParamField path="exclude_paths" type="array" optional>
+  Exclude commits that **only** modify files matching these glob patterns.
+  
+  Takes priority over `include_paths`:
+  - Commits touching both included and excluded paths are included
+  - Commits only modifying excluded paths are excluded
+  
+  **Example:**
+  ```toml
+  [git]
+  exclude_paths = ["unrelated/", "*.lock"]
+  ```
+</ParamField>
+
+## Complete Example
+
+```toml
+[git]
+conventional_commits = true
+filter_unconventional = true
+require_conventional = false
+split_commits = false
+
+commit_preprocessors = [
+  { pattern = '\\(#([0-9]+)\\)', replace = "([#${1}](https://github.com/orhun/git-cliff/issues/${1}))" },
+  { pattern = '.*', replace_command = 'typos --write-changes -' },
+]
+
+commit_parsers = [
+  { message = "^feat", group = "<!-- 0 -->⛰️  Features" },
+  { message = "^fix", group = "<!-- 1 -->🐛 Bug Fixes" },
+  { message = "^doc", group = "<!-- 3 -->📚 Documentation" },
+  { message = "^perf", group = "<!-- 4 -->⚡ Performance" },
+  { message = "^refactor\\(clippy\\)", skip = true },
+  { message = "^refactor", group = "<!-- 2 -->🚜 Refactor" },
+  { message = "^style", group = "<!-- 5 -->🎨 Styling" },
+  { message = "^test", group = "<!-- 6 -->🧪 Testing" },
+  { message = "^chore\\(release\\): prepare for", skip = true },
+  { message = "^chore\\(deps.*\\)", skip = true },
+  { message = "^chore|^ci", group = "<!-- 7 -->⚙️ Miscellaneous Tasks" },
+  { body = ".*security", group = "<!-- 8 -->🛡️ Security" },
+  { message = "^revert", group = "<!-- 9 -->◀️ Revert" },
+]
+
+protect_breaking_commits = false
+filter_commits = false
+fail_on_unmatched_commit = false
+
+tag_pattern = "v[0-9].*"
+skip_tags = "beta|alpha"
+ignore_tags = "rc"
+
+use_branch_tags = false
+topo_order = false
+topo_order_commits = true
+sort_commits = "newest"
+
+link_parsers = [
+  { pattern = "#(\\d+)", href = "https://github.com/orhun/git-cliff/issues/$1" },
+]
+
+limit_commits = 1000
+recurse_submodules = false
+include_paths = ["src/"]
+exclude_paths = ["*.lock"]
+```

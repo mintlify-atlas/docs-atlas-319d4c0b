@@ -1,0 +1,394 @@
+---
+title: Submodules
+description: Include Git submodule commits in your changelog
+---
+
+git-cliff can include commits from Git submodules in your changelog, allowing you to track changes across your main repository and its dependencies.
+
+## Enabling Submodule Support
+
+Enable submodule commit processing in your configuration file:
+
+```toml
+[git]
+recurse_submodules = true
+```
+
+With this setting, git-cliff will process commits from all submodules and include them in the changelog.
+
+## Basic Example
+
+Here's a basic template that includes submodule commits:
+
+```toml
+[git]
+recurse_submodules = true
+
+[changelog]
+body = """
+{% for submodule_path, commits in submodule_commits %}
+    ### {{ submodule_path | upper_first }}
+    {% for group, commits in commits | group_by(attribute="group") %}
+        #### {{ group | upper_first }}
+        {% for commit in commits %}
+            - {{ commit.message | upper_first }}\
+        {% endfor %}
+    {% endfor %}
+{% endfor %}
+"""
+```
+
+**Example output:**
+```markdown
+### lib/external-api
+#### Features
+- Add authentication support
+- Implement rate limiting
+
+#### Bug Fixes
+- Fix timeout handling
+
+### themes/default
+#### Features
+- Add dark mode support
+```
+
+## Template Variables
+
+### `submodule_commits`
+
+A map of submodule paths to their commits:
+
+```jinja
+{% for submodule_path, commits in submodule_commits %}
+    Submodule: {{ submodule_path }}
+    Commits: {{ commits | length }}
+{% endfor %}
+```
+
+Each commit has the same properties as regular commits:
+- `id` - commit SHA
+- `message` - commit message
+- `group` - commit group (Features, Bug Fixes, etc.)
+- `scope` - commit scope
+- `links` - related links/issues
+
+## Complete Template Example
+
+A comprehensive template that includes both main repository and submodule changes:
+
+```toml
+[git]
+recurse_submodules = true
+
+[changelog]
+header = """
+# Changelog
+
+All notable changes to this project will be documented in this file.
+"""
+
+body = """
+{% if version %}
+    ## [{{ version | trim_start_matches(pat="v") }}] - {{ timestamp | date(format="%Y-%m-%d") }}
+{% else %}
+    ## [Unreleased]
+{% endif %}
+
+### Main Repository
+{% for group, commits in commits | group_by(attribute="group") %}
+    #### {{ group | upper_first }}
+    {% for commit in commits %}
+        - {{ commit.message | upper_first }}
+    {% endfor %}
+{% endfor %}
+
+{% if submodule_commits %}
+### Submodules
+{% for submodule_path, submodule_commits_list in submodule_commits %}
+    #### {{ submodule_path }}
+    {% for group, commits in submodule_commits_list | group_by(attribute="group") %}
+        **{{ group | upper_first }}**
+        {% for commit in commits %}
+            - {{ commit.message | upper_first }}
+        {% endfor %}
+    {% endfor %}
+{% endfor %}
+{% endif %}
+"""
+```
+
+## Checking for Submodule Updates
+
+You can conditionally render the submodules section:
+
+```jinja
+{% if submodule_commits %}
+### Submodule Updates
+
+{% for submodule_path, commits in submodule_commits %}
+    #### {{ submodule_path }}
+    - Updated with {{ commits | length }} commit(s)
+    {% for commit in commits %}
+        - {{ commit.id | truncate(length=7, end="") }}: {{ commit.message }}
+    {% endfor %}
+{% endfor %}
+{% else %}
+_No submodule updates in this release._
+{% endif %}
+```
+
+<Note>
+If a release does not contain any submodule updates, `submodule_commits` is an empty map.
+</Note>
+
+## Submodule Commit Details
+
+Access detailed submodule commit information:
+
+```jinja
+{% for submodule_path, commits in submodule_commits %}
+### Submodule: {{ submodule_path }}
+
+{% for commit in commits %}
+- **{{ commit.group }}**: {{ commit.message }}
+  - SHA: `{{ commit.id }}`
+  - Scope: {{ commit.scope | default(value="N/A") }}
+  {% if commit.breaking %}
+  - ⚠️ BREAKING CHANGE
+  {% endif %}
+{% endfor %}
+{% endfor %}
+```
+
+## Filtering Submodule Commits
+
+You can filter submodule commits just like regular commits:
+
+```toml
+[git]
+recurse_submodules = true
+
+commit_parsers = [
+  { message = "^feat", group = "Features" },
+  { message = "^fix", group = "Bug Fixes" },
+  { message = "^docs", skip = true },  # Skip documentation commits
+]
+```
+
+These parsers apply to both main repository and submodule commits.
+
+## Common Patterns
+
+### Group by Type Across Submodules
+
+```jinja
+### Features
+{% for submodule_path, commits in submodule_commits %}
+    {% for commit in commits | filter(attribute="group", value="Features") %}
+        - [{{ submodule_path }}] {{ commit.message }}
+    {% endfor %}
+{% endfor %}
+
+### Bug Fixes
+{% for submodule_path, commits in submodule_commits %}
+    {% for commit in commits | filter(attribute="group", value="Bug Fixes") %}
+        - [{{ submodule_path }}] {{ commit.message }}
+    {% endfor %}
+{% endfor %}
+```
+
+### Submodule Summary
+
+```jinja
+{% if submodule_commits %}
+### Updated Submodules
+
+{% for submodule_path, commits in submodule_commits %}
+- **{{ submodule_path }}**: {{ commits | length }} commit(s)
+{% endfor %}
+{% endif %}
+```
+
+### Detailed Submodule Changes
+
+```jinja
+{% for submodule_path, commits in submodule_commits %}
+<details>
+<summary>{{ submodule_path }} ({{ commits | length }} changes)</summary>
+
+{% for group, group_commits in commits | group_by(attribute="group") %}
+#### {{ group }}
+{% for commit in group_commits %}
+- {{ commit.message }} ([`{{ commit.id | truncate(length=7, end="") }}`]({{ repository_url }}/commit/{{ commit.id }}))
+{% endfor %}
+{% endfor %}
+
+</details>
+{% endfor %}
+```
+
+## Practical Example
+
+Complete configuration for a project with submodules:
+
+```toml
+[changelog]
+header = "# Changelog\n\n"
+body = """
+{% if version %}
+## [{{ version }}] - {{ timestamp | date(format="%Y-%m-%d") }}
+{% else %}
+## [Unreleased]
+{% endif %}
+
+{% if commits %}
+### Main Repository Changes
+{% for group, commits in commits | group_by(attribute="group") %}
+#### {{ group | upper_first }}
+{% for commit in commits %}
+- {{ commit.message | split(pat="\n") | first | upper_first }}{% if commit.links %} ([#{{ commit.links[0] }}]({{ commit.links[0] }})){% endif %}
+{% endfor %}
+{% endfor %}
+{% endif %}
+
+{% if submodule_commits %}
+### Submodule Updates
+{% for submodule_path, submodule_commits_list in submodule_commits %}
+#### 📦 {{ submodule_path }}
+{% for group, commits in submodule_commits_list | group_by(attribute="group") %}
+**{{ group }}**
+{% for commit in commits %}
+- {{ commit.message | split(pat="\n") | first }}
+{% endfor %}
+{% endfor %}
+{% endfor %}
+{% endif %}
+"""
+
+[git]
+recurse_submodules = true
+conventional_commits = true
+filter_unconventional = true
+
+commit_parsers = [
+  { message = "^feat", group = "Features" },
+  { message = "^fix", group = "Bug Fixes" },
+  { message = "^perf", group = "Performance" },
+  { message = "^docs", skip = true },
+  { message = "^test", skip = true },
+  { message = "^chore", skip = true },
+]
+```
+
+## Usage Examples
+
+### Generate Changelog with Submodules
+
+```bash
+# Ensure submodules are initialized
+git submodule update --init --recursive
+
+# Generate changelog
+git cliff -o CHANGELOG.md
+```
+
+### Preview Submodule Changes
+
+```bash
+# Show what's changed in submodules
+git cliff --unreleased --strip header --strip footer
+```
+
+### Update Submodules and Changelog
+
+```bash
+#!/bin/bash
+
+# Update all submodules to latest
+git submodule update --remote
+
+# Generate changelog including submodule updates
+git cliff --unreleased --tag v1.0.0 -o CHANGELOG.md
+
+# Commit changes
+git add .
+git commit -m "chore: update submodules and changelog"
+git tag v1.0.0
+```
+
+## Limitations
+
+<Warning>
+Nested submodules (submodules within submodules) are not yet supported.
+</Warning>
+
+Only direct submodules of the main repository are processed. If you have nested submodules:
+
+```
+project/
+├── .git/
+├── submodule-a/  ← Included
+│   └── .git/
+└── submodule-b/  ← Included
+    ├── .git/
+    └── nested-submodule/  ← NOT included
+        └── .git/
+```
+
+## Troubleshooting
+
+### Submodules Not Appearing
+
+If submodule commits don't appear in the changelog:
+
+```bash
+# 1. Verify submodules are initialized
+git submodule status
+
+# 2. Update submodules
+git submodule update --init --recursive
+
+# 3. Check for submodule changes
+git submodule foreach git log --oneline -5
+
+# 4. Enable verbose output
+git cliff -vv
+```
+
+### Empty Submodule Sections
+
+If submodule sections are empty:
+
+```bash
+# Check if submodules have updates in the range
+git diff HEAD~1 HEAD --submodule=log
+
+# Verify configuration
+grep recurse_submodules cliff.toml
+```
+
+### Template Not Rendering Submodules
+
+Verify your template includes the `submodule_commits` variable:
+
+```toml
+[changelog]
+body = """
+{{ submodule_commits | json_encode() }}
+"""
+```
+
+Then run:
+```bash
+git cliff --unreleased
+```
+
+This will show the raw submodule data for debugging.
+
+## See Also
+
+- [Configuration: Git](/configuration/git#recurse_submodules) - Git configuration options
+- [Templating: Context](/templating/context) - Available template variables
+- [Multiple Repositories](/usage/monorepos) - Working with multiple repos
+- [Git Submodules Documentation](https://git-scm.com/book/en/v2/Git-Tools-Submodules) - Official Git submodules guide

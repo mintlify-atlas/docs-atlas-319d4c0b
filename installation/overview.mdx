@@ -1,0 +1,136 @@
+---
+title: Installation Overview
+description: Choose the best installation method for git-cliff based on your platform and needs
+---
+
+# Installation Overview
+
+git-cliff is available through multiple package managers and installation methods. Choose the one that best fits your workflow.
+
+## Quick Comparison
+
+| Method | Platform | Best For | Installation Time |
+|--------|----------|----------|-----------------|
+| [Cargo](/installation/cargo) | All | Rust developers, latest features | ~2-3 minutes |
+| [Binary](/installation/binary) | All | Quick setup, no dependencies | ~30 seconds |
+| [NPM](/installation/npm) | All | Node.js projects, programmatic API | ~1 minute |
+| [PyPI](/installation/pypi) | All | Python projects | ~30 seconds |
+| [Pacman](/installation/pacman) | Arch Linux | Arch users, official repos | ~10 seconds |
+| [Docker](/installation/docker) | All | Containers, CI/CD | ~1 minute |
+| [Homebrew](/installation/homebrew) | macOS/Linux | macOS users, easy updates | ~1 minute |
+| [Nix](/installation/nix) | NixOS/Linux/macOS | Reproducible builds | ~30 seconds |
+
+## Installation Methods
+
+<CardGroup cols={3}>
+  <Card title="Cargo" icon="rust" href="/installation/cargo">
+    Install from crates.io with full feature control
+  </Card>
+  
+  <Card title="Binary" icon="download" href="/installation/binary">
+    Download pre-built binaries for your platform
+  </Card>
+  
+  <Card title="NPM" icon="npm" href="/installation/npm">
+    Install via npm with TypeScript API support
+  </Card>
+  
+  <Card title="PyPI" icon="python" href="/installation/pypi">
+    Install using pip for Python projects
+  </Card>
+  
+  <Card title="Pacman" icon="box" href="/installation/pacman">
+    Official Arch Linux package
+  </Card>
+  
+  <Card title="Docker" icon="docker" href="/installation/docker">
+    Run in containers with Docker Hub images
+  </Card>
+  
+  <Card title="Homebrew" icon="beer-mug" href="/installation/homebrew">
+    Install on macOS using Homebrew
+  </Card>
+  
+  <Card title="Nix" icon="snowflake" href="/installation/nix">
+    Install with Nix package manager
+  </Card>
+  
+  <Card title="More Options" icon="ellipsis" href="https://git-cliff.org/docs/installation/">
+    View all installation methods
+  </Card>
+</CardGroup>
+
+## Recommendations
+
+<Tabs>
+  <Tab title="For Rust Developers">
+    **Use [Cargo](/installation/cargo)** for the most flexibility:
+    - Access to latest features
+    - Control over feature flags
+    - Easy updates with `cargo install`
+    - Integrates with Rust toolchain
+  </Tab>
+  
+  <Tab title="For Quick Setup">
+    **Use [Binary](/installation/binary)** for the fastest installation:
+    - No compilation required
+    - Works immediately
+    - No additional dependencies
+    - Perfect for CI/CD pipelines
+  </Tab>
+  
+  <Tab title="For JavaScript/TypeScript">
+    **Use [NPM](/installation/npm)** for seamless integration:
+    - Programmatic API available
+    - TypeScript types included
+    - Easy integration with Node.js tools
+    - Great for automation scripts
+  </Tab>
+  
+  <Tab title="For Python Projects">
+    **Use [PyPI](/installation/pypi)** for Python workflows:
+    - Simple pip installation
+    - Works with virtual environments
+    - Easy to include in requirements.txt
+  </Tab>
+  
+  <Tab title="For macOS">
+    **Use [Homebrew](/installation/homebrew)** for system-wide installation:
+    - Easy updates with `brew upgrade`
+    - Manages dependencies automatically
+    - Standard macOS workflow
+  </Tab>
+  
+  <Tab title="For Containers">
+    **Use [Docker](/installation/docker)** for containerized environments:
+    - Consistent across environments
+    - Perfect for CI/CD
+    - No local installation needed
+    - Multiple registries available
+  </Tab>
+</Tabs>
+
+## Verifying Installation
+
+After installation, verify git-cliff is working:
+
+```bash
+git-cliff --version
+```
+
+You should see output like:
+```
+git-cliff 2.7.0
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Configuration" icon="gear" href="/configuration/overview">
+    Learn how to configure git-cliff for your project
+  </Card>
+  
+  <Card title="Usage Examples" icon="book" href="/usage/basic-usage">
+    See practical examples and common use cases
+  </Card>
+</CardGroup>

@@ -1,0 +1,307 @@
+---
+title: Gitea Integration
+description: Integrate git-cliff with Gitea/Forgejo to fetch pull request data, contributors, and labels
+---
+
+# Gitea Integration
+
+For projects hosted on Gitea or Forgejo, you can use git-cliff to add the following to your changelog:
+
+- Gitea usernames
+- Contributors list (all contributors / first time)
+- Pull request links (associated with commits)
+- PR titles and labels
+
+<Note>
+If you have built from source, enable the `gitea` feature flag for the integration to work. This also works with Forgejo instances.
+</Note>
+
+## Setting up the remote
+
+As default, remote upstream URL is automatically retrieved from the Git repository.
+
+If that doesn't work or if you want to set a custom remote, there are several ways to configure it:
+
+### Configuration file
+
+Use the `remote.gitea` section in your `cliff.toml`:
+
+```toml cliff.toml
+[remote.gitea]
+owner = "orhun"
+repo = "git-cliff"
+token = ""  # Leave empty to use environment variable
+```
+
+### Command line arguments
+
+Use the `--gitea-repo` argument (takes values in `OWNER/REPO` format):
+
+```bash
+git cliff --gitea-repo orhun/git-cliff
+```
+
+### Environment variables
+
+Use the `GITEA_REPO` environment variable (same format as `--gitea-repo`):
+
+```bash
+GITEA_REPO="orhun/git-cliff" git cliff
+```
+
+## Authentication
+
+<Steps>
+
+### Understanding authentication requirements
+
+[Gitea REST API](https://gitea.com/api/swagger) is used to retrieve data from Gitea/Forgejo.
+
+- **Public repositories**: No authentication required
+- **Private repositories**: Access token required
+
+### Create a Gitea token
+
+For private repositories, create an access token:
+
+1. Navigate to **Settings** → **Applications** → **Access Tokens**
+2. Generate a new token
+3. Required permissions: **read:repository**
+
+### Set the token
+
+You can provide the access token in multiple ways:
+
+<CodeGroup>
+
+```bash Environment Variable (Recommended)
+GITEA_TOKEN="your_token_here" git cliff --gitea-repo "orhun/git-cliff"
+```
+
+```bash Command Line Argument
+git cliff --gitea-token "your_token_here" --gitea-repo "orhun/git-cliff"
+```
+
+```toml Configuration File (Not Recommended)
+[remote.gitea]
+owner = "orhun"
+repo = "git-cliff"
+token = "your_token_here"  # Not recommended for security
+```
+
+</CodeGroup>
+
+</Steps>
+
+## Advanced Configuration
+
+### Custom API URL
+
+The default API URL points to Codeberg (`https://codeberg.org`). For self-hosted Gitea/Forgejo instances, use the `GITEA_API_URL` environment variable:
+
+<CodeGroup>
+
+```bash Self-hosted Gitea
+GITEA_API_URL="https://gitea.company.com" \
+GITEA_TOKEN="your_token" \
+git cliff --gitea-repo "company/project"
+```
+
+```bash Forgejo Instance
+GITEA_API_URL="https://forge.example.com" \
+GITEA_TOKEN="your_token" \
+git cliff --gitea-repo "user/repo"
+```
+
+```toml cliff.toml
+[remote.gitea]
+owner = "company"
+repo = "project"
+api_url = "https://gitea.company.com"  # Custom instance
+```
+
+</CodeGroup>
+
+### TLS Certificate Issues
+
+If you encounter invalid peer certificate errors with self-hosted instances, use the `--use-native-tls` flag:
+
+```bash
+git cliff --gitea-repo "orhun/git-cliff" --use-native-tls
+```
+
+Or configure it in `cliff.toml`:
+
+```toml
+[remote.gitea]
+owner = "orhun"
+repo = "git-cliff"
+native_tls = true
+```
+
+## Template Variables
+
+### Remote metadata
+
+You can use the following context for adding the remote to the changelog:
+
+```json
+{
+  "gitea": {
+    "owner": "orhun",
+    "repo": "git-cliff"
+  }
+}
+```
+
+**Example template:**
+
+```jinja
+https://codeberg.org/{{ remote.gitea.owner }}/{{ remote.gitea.repo }}/commits/tag/{{ version }}
+```
+
+### Commit authors and PR data
+
+For each commit, Gitea-related values are added as a nested `remote` object:
+
+```json
+{
+  "id": "8edec7fd50f703811d55f14a3c5f0fd02b43d9e7",
+  "message": "refactor(config): remove unnecessary newline from configs\n",
+  "group": "🚜 Refactor",
+  "remote": {
+    "username": "orhun",
+    "pr_title": "some things have changed",
+    "pr_number": 420,
+    "pr_labels": ["rust", "enhancement"],
+    "is_first_time": false
+  }
+}
+```
+
+**Example template:**
+
+```jinja
+{% for commit in commits %}
+  * {{ commit.message | split(pat="\n") | first | trim }}\
+    {% if commit.remote.username %} by @{{ commit.remote.username }}{%- endif %}\
+    {% if commit.remote.pr_number %} in #{{ commit.remote.pr_number }}{%- endif %}
+{%- endfor -%}
+```
+
+**Output:**
+
+```markdown
+- feat(commit): add merge_commit flag to the context by @orhun in #389
+- feat(args): set `CHANGELOG.md` as default missing value for output option by @sh-cho in #354
+```
+
+### Contributors list
+
+For each release, contributors data is added to the template context:
+
+```json
+{
+  "version": "v1.4.0",
+  "commits": [],
+  "gitea": {
+    "contributors": [
+      {
+        "username": "orhun",
+        "pr_title": "some things have changed",
+        "pr_number": 420,
+        "pr_labels": ["rust"],
+        "is_first_time": true
+      },
+      {
+        "username": "cliffjumper",
+        "pr_title": "I love jumping",
+        "pr_number": 999,
+        "pr_labels": ["enhancement"],
+        "is_first_time": true
+      }
+    ]
+  }
+}
+```
+
+**Example template for first-time contributors:**
+
+```jinja
+{% for contributor in gitea.contributors | filter(attribute="is_first_time", value=true) %}
+  * @{{ contributor.username }} made their first contribution in #{{ contributor.pr_number }}
+{%- endfor -%}
+```
+
+**Output:**
+
+```markdown
+- @orhun made their first contribution in #420
+- @cliffjumper made their first contribution in #999
+```
+
+### Group commits by PR labels
+
+You can organize changelog entries by pull request labels:
+
+```jinja
+{% for group, commits in commits | group_by(attribute="remote.pr_labels") %}
+### {{ group | upper }}
+{% for commit in commits %}
+- {{ commit.message | split(pat="\n") | first }} (#{{ commit.remote.pr_number }})
+{%- endfor %}
+{% endfor %}
+```
+
+## Configuration Example
+
+Complete configuration example for a Gitea-hosted project:
+
+```toml cliff.toml
+[remote.gitea]
+owner = "username"
+repo = "my-project"
+api_url = "https://codeberg.org"  # Default for Codeberg
+# token = ""  # Use GITEA_TOKEN environment variable instead
+
+[changelog]
+body = """
+{% for commit in commits %}
+  * {{ commit.message | split(pat="\n") | first | trim }}\
+    {% if commit.remote.username %} by @{{ commit.remote.username }}{%- endif %}\
+    {% if commit.remote.pr_number %} in #{{ commit.remote.pr_number }}{%- endif %}
+{% endfor %}
+
+{% if gitea.contributors | filter(attribute="is_first_time", value=true) %}
+## New Contributors
+{% for contributor in gitea.contributors | filter(attribute="is_first_time", value=true) %}
+  * @{{ contributor.username }} made their first contribution in #{{ contributor.pr_number }}
+{%- endfor %}
+{% endif %}
+"""
+```
+
+## Forgejo Compatibility
+
+Gitea integration works seamlessly with Forgejo (a soft fork of Gitea):
+
+```bash
+# For Forgejo instances, use the same configuration
+GITEA_API_URL="https://forge.example.com" \
+GITEA_TOKEN="your_forgejo_token" \
+git cliff --gitea-repo "user/project"
+```
+
+## Common Gitea Instances
+
+Here are some popular public Gitea/Forgejo instances:
+
+| Instance | API URL | Notes |
+|----------|---------|-------|
+| Codeberg | `https://codeberg.org` | Default URL (Forgejo) |
+| Gitea.com | `https://gitea.com` | Official Gitea instance |
+| Custom | `https://your-domain.com` | Self-hosted |
+
+<Note>
+The default API endpoint is Codeberg. If you're using a different instance, make sure to set `GITEA_API_URL`.
+</Note>

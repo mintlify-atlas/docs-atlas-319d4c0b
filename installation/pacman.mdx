@@ -1,0 +1,301 @@
+---
+title: Install via Pacman
+description: Install git-cliff on Arch Linux using the official package repository
+---
+
+# Install via Pacman
+
+Install git-cliff on Arch Linux from the [official repositories](https://archlinux.org/packages/extra/x86_64/git-cliff/).
+
+## Quick Install
+
+```bash
+sudo pacman -S git-cliff
+```
+
+## Installation Steps
+
+<Steps>
+  <Step title="Update package database">
+    Ensure your package database is up to date:
+    
+    ```bash
+    sudo pacman -Sy
+    ```
+  </Step>
+  
+  <Step title="Install git-cliff">
+    Install from the official repositories:
+    
+    ```bash
+    sudo pacman -S git-cliff
+    ```
+    
+    This will:
+    - Download the package from official Arch repos
+    - Install git-cliff and any dependencies
+    - Set up the binary in `/usr/bin/`
+  </Step>
+  
+  <Step title="Verify installation">
+    ```bash
+    git-cliff --version
+    ```
+    
+    Expected output:
+    ```
+    git-cliff 2.7.0
+    ```
+  </Step>
+  
+  <Step title="Test in a repository">
+    ```bash
+    cd /path/to/your/git/repo
+    git-cliff --help
+    ```
+  </Step>
+</Steps>
+
+## Package Information
+
+<Tabs>
+  <Tab title="Repository Info">
+    git-cliff is available in the **Extra** repository:
+    
+    - **Package Name:** `git-cliff`
+    - **Repository:** `extra`
+    - **Architecture:** `x86_64`
+    - **License:** `Apache-2.0` or `MIT`
+    
+    View package details:
+    ```bash
+    pacman -Si git-cliff
+    ```
+  </Tab>
+  
+  <Tab title="Installed Files">
+    View installed files:
+    
+    ```bash
+    pacman -Ql git-cliff
+    ```
+    
+    Typical installation includes:
+    - `/usr/bin/git-cliff` - Main binary
+    - `/usr/share/man/man1/git-cliff.1.gz` - Man page
+    - `/usr/share/doc/git-cliff/` - Documentation
+    - `/usr/share/licenses/git-cliff/` - License files
+  </Tab>
+  
+  <Tab title="Dependencies">
+    Check dependencies:
+    
+    ```bash
+    pactree git-cliff
+    ```
+    
+    git-cliff has minimal dependencies, typically just:
+    - `gcc-libs`
+    - `glibc`
+  </Tab>
+</Tabs>
+
+## Alternative: AUR Installation
+
+For development or git versions, use the AUR:
+
+<Tabs>
+  <Tab title="yay">
+    Install using yay:
+    
+    ```bash
+    # Latest git version
+    yay -S git-cliff-git
+    
+    # Or specific AUR package
+    yay -S git-cliff-bin
+    ```
+  </Tab>
+  
+  <Tab title="paru">
+    Install using paru:
+    
+    ```bash
+    # Latest git version
+    paru -S git-cliff-git
+    
+    # Or binary package
+    paru -S git-cliff-bin
+    ```
+  </Tab>
+  
+  <Tab title="Manual">
+    Clone and build manually:
+    
+    ```bash
+    git clone https://aur.archlinux.org/git-cliff-git.git
+    cd git-cliff-git
+    makepkg -si
+    ```
+  </Tab>
+</Tabs>
+
+## Managing the Package
+
+<CodeGroup>
+  ```bash Update
+  # Update all packages (including git-cliff)
+  sudo pacman -Syu
+  
+  # Update only git-cliff
+  sudo pacman -S git-cliff
+  ```
+  
+  ```bash Remove
+  # Remove git-cliff
+  sudo pacman -R git-cliff
+  
+  # Remove with dependencies that aren't required by other packages
+  sudo pacman -Rs git-cliff
+  ```
+  
+  ```bash Reinstall
+  # Reinstall git-cliff
+  sudo pacman -S git-cliff --overwrite '*'
+  ```
+  
+  ```bash Query
+  # Check if installed
+  pacman -Q git-cliff
+  
+  # Show detailed info
+  pacman -Qi git-cliff
+  
+  # List files
+  pacman -Ql git-cliff
+  ```
+</CodeGroup>
+
+## Documentation
+
+Access the man page:
+
+```bash
+man git-cliff
+```
+
+View documentation files:
+```bash
+ls /usr/share/doc/git-cliff/
+```
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Package not found">
+    Ensure the Extra repository is enabled in `/etc/pacman.conf`:
+    
+    ```bash
+    sudo nano /etc/pacman.conf
+    ```
+    
+    Verify these lines are uncommented:
+    ```ini
+    [extra]
+    Include = /etc/pacman.d/mirrorlist
+    ```
+    
+    Then update:
+    ```bash
+    sudo pacman -Sy
+    ```
+  </Accordion>
+  
+  <Accordion title="Failed to update package database">
+    Update your mirrorlist:
+    
+    ```bash
+    # Backup current mirrorlist
+    sudo cp /etc/pacman.d/mirrorlist /etc/pacman.d/mirrorlist.backup
+    
+    # Generate new mirrorlist (requires reflector)
+    sudo reflector --latest 20 --protocol https --sort rate --save /etc/pacman.d/mirrorlist
+    
+    # Update database
+    sudo pacman -Syy
+    ```
+  </Accordion>
+  
+  <Accordion title="Signature verification failed">
+    If you get PGP signature errors:
+    
+    ```bash
+    # Update archlinux-keyring first
+    sudo pacman -S archlinux-keyring
+    
+    # Then try installing git-cliff again
+    sudo pacman -S git-cliff
+    ```
+    
+    If issues persist:
+    ```bash
+    # Refresh keys
+    sudo pacman-key --refresh-keys
+    ```
+  </Accordion>
+  
+  <Accordion title="Conflicts with AUR package">
+    If you have an AUR version installed:
+    
+    ```bash
+    # Remove AUR version
+    yay -R git-cliff-git
+    # or
+    yay -R git-cliff-bin
+    
+    # Install official version
+    sudo pacman -S git-cliff
+    ```
+  </Accordion>
+  
+  <Accordion title="Command not found after installation">
+    The binary should be in `/usr/bin/`. Check if it exists:
+    
+    ```bash
+    ls -l /usr/bin/git-cliff
+    ```
+    
+    If missing, reinstall:
+    ```bash
+    sudo pacman -S git-cliff --overwrite '*'
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Keeping Updated
+
+Stay up to date with regular system updates:
+
+```bash
+# Full system update (recommended)
+sudo pacman -Syu
+
+# Check for updates without installing
+checkupdates
+```
+
+<Note>
+  Arch Linux follows a rolling release model, so git-cliff will be updated regularly in the official repositories.
+</Note>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Configuration" icon="gear" href="/configuration/overview">
+    Configure git-cliff for your project
+  </Card>
+  
+  <Card title="Usage Examples" icon="book" href="/usage/basic-usage">
+    Learn how to use git-cliff
+  </Card>
+</CardGroup>

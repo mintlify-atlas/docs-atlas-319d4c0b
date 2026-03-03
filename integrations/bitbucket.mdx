@@ -1,0 +1,337 @@
+---
+title: Bitbucket Integration
+description: Integrate git-cliff with Bitbucket Cloud and Server to fetch pull request data and contributors
+---
+
+# Bitbucket Integration
+
+For projects hosted on Bitbucket, you can use git-cliff to add the following to your changelog:
+
+- Bitbucket usernames
+- Contributors list (all contributors / first time)
+- Pull request links (associated with commits)
+- PR titles
+
+<Note>
+If you have built from source, enable the `bitbucket` feature flag for the integration to work.
+</Note>
+
+## Setting up the remote
+
+As default, remote upstream URL is automatically retrieved from the Git repository.
+
+If that doesn't work or if you want to set a custom remote, there are several ways to configure it:
+
+### Configuration file
+
+Use the `remote.bitbucket` section in your `cliff.toml`:
+
+```toml cliff.toml
+[remote.bitbucket]
+owner = "workspace-name"
+repo = "repository-name"
+token = ""  # Leave empty to use environment variable
+```
+
+### Command line arguments
+
+Use the `--bitbucket-repo` argument (takes values in `OWNER/REPO` format):
+
+```bash
+git cliff --bitbucket-repo workspace-name/repository-name
+```
+
+### Environment variables
+
+Use the `BITBUCKET_REPO` environment variable (same format as `--bitbucket-repo`):
+
+```bash
+BITBUCKET_REPO="workspace-name/repository-name" git cliff
+```
+
+## Authentication
+
+<Steps>
+
+### Understanding rate limits
+
+[Bitbucket REST API](https://developer.atlassian.com/cloud/bitbucket/rest/) is used to retrieve data from Bitbucket. It has [rate limiting](https://support.atlassian.com/bitbucket-cloud/docs/api-request-limits/) rules:
+
+- **Unauthenticated**: 60 requests/hour per IP
+- **Authenticated**: Higher rate limits based on your plan
+
+### Create a Bitbucket token
+
+Follow [this guide](https://developer.atlassian.com/cloud/bitbucket/rest/intro/#authentication) for creating an access token.
+
+#### For Bitbucket Cloud:
+
+1. Go to **Personal settings** → **App passwords**
+2. Create an app password
+3. Required permissions:
+   - **Repositories**: Read
+   - **Pull requests**: Read
+
+#### For Bitbucket Server:
+
+1. Go to **Profile** → **Manage account** → **Personal access tokens**
+2. Create a token
+3. Required permissions: **Repository read**
+
+### Set the token
+
+You can provide the access token in multiple ways:
+
+<CodeGroup>
+
+```bash Environment Variable (Recommended)
+BITBUCKET_TOKEN="your_app_password" git cliff --bitbucket-repo "workspace/repo"
+```
+
+```bash Command Line Argument
+git cliff --bitbucket-token "your_app_password" --bitbucket-repo "workspace/repo"
+```
+
+```toml Configuration File (Not Recommended)
+[remote.bitbucket]
+owner = "workspace-name"
+repo = "repository-name"
+token = "your_app_password"  # Not recommended for security
+```
+
+```yaml Bitbucket Pipelines
+pipelines:
+  default:
+    - step:
+        name: Generate Changelog
+        script:
+          - git cliff --bitbucket-repo "$BITBUCKET_WORKSPACE/$BITBUCKET_REPO_SLUG"
+        env:
+          BITBUCKET_TOKEN: $BITBUCKET_ACCESS_TOKEN
+```
+
+</CodeGroup>
+
+</Steps>
+
+## Bitbucket Cloud vs Server
+
+### Bitbucket Cloud
+
+The default configuration works with Bitbucket Cloud (bitbucket.org):
+
+```bash
+# Default: Bitbucket Cloud
+BITBUCKET_TOKEN="your_token" \
+git cliff --bitbucket-repo "workspace/repo"
+```
+
+### Bitbucket Server (Self-hosted)
+
+For Bitbucket Server (self-hosted or Data Center), use the `BITBUCKET_API_URL` environment variable:
+
+```bash
+BITBUCKET_API_URL="https://bitbucket.company.com/rest/api/1.0" \
+BITBUCKET_TOKEN="your_token" \
+git cliff --bitbucket-repo "PROJECT/repo"
+```
+
+Or configure it in `cliff.toml`:
+
+```toml cliff.toml
+[remote.bitbucket]
+owner = "PROJECT"
+repo = "repository-name"
+api_url = "https://bitbucket.company.com/rest/api/1.0"
+```
+
+<Warning>
+Note the API path differences:
+- **Cloud**: `https://api.bitbucket.org/2.0/repositories`
+- **Server**: `https://your-server/rest/api/1.0`
+</Warning>
+
+## Advanced Configuration
+
+### TLS Certificate Issues
+
+If you encounter certificate errors with Bitbucket Server, use the `--use-native-tls` flag:
+
+```bash
+git cliff --bitbucket-repo "PROJECT/repo" --use-native-tls
+```
+
+Or configure it in `cliff.toml`:
+
+```toml
+[remote.bitbucket]
+owner = "PROJECT"
+repo = "repository-name"
+native_tls = true
+```
+
+## Template Variables
+
+### Remote metadata
+
+You can use the following context for adding the remote to the changelog:
+
+```json
+{
+  "bitbucket": {
+    "owner": "workspace-name",
+    "repo": "repository-name"
+  }
+}
+```
+
+**Example template:**
+
+```jinja
+https://bitbucket.org/{{ remote.bitbucket.owner }}/{{ remote.bitbucket.repo }}/commits/tag/{{ version }}
+```
+
+### Commit authors and PR data
+
+For each commit, Bitbucket-related values are added as a nested `remote` object:
+
+```json
+{
+  "id": "8edec7fd50f703811d55f14a3c5f0fd02b43d9e7",
+  "message": "refactor(config): remove unnecessary newline from configs\n",
+  "group": "🚜 Refactor",
+  "remote": {
+    "username": "orhun",
+    "pr_title": "some things have changed",
+    "pr_number": 420,
+    "pr_labels": [],
+    "is_first_time": false
+  }
+}
+```
+
+<Note>
+Bitbucket's API does not provide label information for pull requests, so `pr_labels` will always be an empty array.
+</Note>
+
+**Example template:**
+
+```jinja
+{% for commit in commits %}
+  * {{ commit.message | split(pat="\n") | first | trim }}\
+    {% if commit.remote.username %} by @{{ commit.remote.username }}{%- endif %}\
+    {% if commit.remote.pr_number %} in #{{ commit.remote.pr_number }}{%- endif %}
+{%- endfor -%}
+```
+
+**Output:**
+
+```markdown
+- feat(commit): add merge_commit flag to the context by @orhun in #389
+- feat(args): set `CHANGELOG.md` as default missing value for output option by @sh-cho in #354
+```
+
+### Contributors list
+
+For each release, contributors data is added to the template context:
+
+```json
+{
+  "version": "v1.4.0",
+  "commits": [],
+  "bitbucket": {
+    "contributors": [
+      {
+        "username": "orhun",
+        "pr_title": "some things have changed",
+        "pr_number": 420,
+        "pr_labels": [],
+        "is_first_time": true
+      },
+      {
+        "username": "cliffjumper",
+        "pr_title": "I love jumping",
+        "pr_number": 999,
+        "pr_labels": [],
+        "is_first_time": true
+      }
+    ]
+  }
+}
+```
+
+**Example template for first-time contributors:**
+
+```jinja
+{% for contributor in bitbucket.contributors | filter(attribute="is_first_time", value=true) %}
+  * @{{ contributor.username }} made their first contribution in #{{ contributor.pr_number }}
+{%- endfor -%}
+```
+
+**Output:**
+
+```markdown
+- @orhun made their first contribution in #420
+- @cliffjumper made their first contribution in #999
+```
+
+## Configuration Example
+
+Complete configuration example for a Bitbucket-hosted project:
+
+```toml cliff.toml
+[remote.bitbucket]
+owner = "my-workspace"
+repo = "my-repository"
+# token = ""  # Use BITBUCKET_TOKEN environment variable instead
+
+[changelog]
+body = """
+{% for commit in commits %}
+  * {{ commit.message | split(pat="\n") | first | trim }}\
+    {% if commit.remote.username %} by @{{ commit.remote.username }}{%- endif %}\
+    {% if commit.remote.pr_number %} in #{{ commit.remote.pr_number }}{%- endif %}
+{% endfor %}
+
+{% if bitbucket.contributors | filter(attribute="is_first_time", value=true) %}
+## New Contributors
+{% for contributor in bitbucket.contributors | filter(attribute="is_first_time", value=true) %}
+  * @{{ contributor.username }} made their first contribution in #{{ contributor.pr_number }}
+{%- endfor %}
+{% endif %}
+"""
+```
+
+## Bitbucket Pipelines Integration
+
+Example `bitbucket-pipelines.yml` configuration:
+
+```yaml bitbucket-pipelines.yml
+pipelines:
+  tags:
+    'v*':
+      - step:
+          name: Generate Changelog
+          image: orhunp/git-cliff:latest
+          script:
+            - git cliff --bitbucket-repo "$BITBUCKET_WORKSPACE/$BITBUCKET_REPO_SLUG" -o CHANGELOG.md
+            - cat CHANGELOG.md
+          artifacts:
+            - CHANGELOG.md
+```
+
+## Known Limitations
+
+<Warning>
+**Label Support**: Unlike GitHub and GitLab, Bitbucket's API does not provide label/tag information for pull requests. The `pr_labels` field will always be empty.
+
+If you need to group commits by labels, consider using conventional commit prefixes instead.
+</Warning>
+
+## Pagination
+
+Bitbucket uses different pagination limits:
+- **Commits**: Up to 100 per page
+- **Pull Requests**: Up to 50 per page
+
+git-cliff automatically handles pagination for repositories of any size.

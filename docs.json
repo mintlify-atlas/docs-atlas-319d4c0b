@@ -1,122 +1,125 @@
 {
   "$schema": "https://mintlify.com/docs.json",
-  "theme": "mint",
-  "name": "Mint Starter Kit",
+  "name": "git-cliff",
+  "theme": "aspen",
   "colors": {
-    "primary": "#16A34A",
-    "light": "#07C983",
-    "dark": "#15803D"
+    "primary": "#C96329",
+    "light": "#BEC5C9",
+    "dark": "#1C2C2E"
   },
-  "favicon": "/favicon.svg",
+  "navbar": {
+    "primary": {
+      "type": "github",
+      "href": "https://github.com/orhun/git-cliff"
+    }
+  },
+  "footer": {
+    "socials": {
+      "github": "https://github.com/orhun/git-cliff",
+      "discord": "https://discord.gg/W3mAwMDWH4",
+      "x": "https://twitter.com/git_cliff"
+    }
+  },
   "navigation": {
     "tabs": [
       {
-        "tab": "Guides",
+        "tab": "Documentation",
         "groups": [
           {
-            "group": "Getting started",
+            "group": "Get Started",
             "pages": [
               "index",
-              "quickstart",
-              "development"
+              "quickstart"
             ]
           },
           {
-            "group": "Customization",
+            "group": "Installation",
             "pages": [
-              "essentials/settings",
-              "essentials/navigation"
+              "installation/overview",
+              "installation/cargo",
+              "installation/binary",
+              "installation/npm",
+              "installation/pypi",
+              "installation/pacman",
+              "installation/docker",
+              "installation/homebrew",
+              "installation/nix"
             ]
           },
           {
-            "group": "Writing content",
+            "group": "Usage",
             "pages": [
-              "essentials/markdown",
-              "essentials/code",
-              "essentials/images",
-              "essentials/reusable-snippets"
+              "usage/overview",
+              "usage/basic-usage",
+              "usage/args",
+              "usage/bump-version",
+              "usage/monorepos",
+              "usage/submodules"
             ]
           },
           {
-            "group": "AI tools",
+            "group": "Configuration",
             "pages": [
-              "ai-tools/cursor",
-              "ai-tools/claude-code",
-              "ai-tools/windsurf"
+              "configuration/overview",
+              "configuration/changelog",
+              "configuration/git",
+              "configuration/remote",
+              "configuration/bump"
+            ]
+          },
+          {
+            "group": "Templating",
+            "pages": [
+              "templating/overview",
+              "templating/syntax",
+              "templating/context",
+              "templating/examples"
             ]
           }
         ]
       },
       {
-        "tab": "API reference",
+        "tab": "Integrations",
         "groups": [
           {
-            "group": "API documentation",
+            "group": "Git Platforms",
             "pages": [
-              "api-reference/introduction"
+              "integrations/github",
+              "integrations/gitlab",
+              "integrations/gitea",
+              "integrations/bitbucket",
+              "integrations/azure-devops"
             ]
           },
           {
-            "group": "Endpoint examples",
+            "group": "CI/CD",
             "pages": [
-              "api-reference/endpoint/get",
-              "api-reference/endpoint/create",
-              "api-reference/endpoint/delete",
-              "api-reference/endpoint/webhook"
+              "integrations/github-actions",
+              "integrations/docker"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Advanced",
+        "groups": [
+          {
+            "group": "Advanced Usage",
+            "pages": [
+              "advanced/tips-and-tricks",
+              "advanced/jujutsu",
+              "advanced/context-loading"
+            ]
+          },
+          {
+            "group": "Development",
+            "pages": [
+              "development/architecture",
+              "development/contributing"
             ]
           }
         ]
       }
-    ],
-    "global": {
-      "anchors": [
-        {
-          "anchor": "Documentation",
-          "href": "https://mintlify.com/docs",
-          "icon": "book-open-cover"
-        },
-        {
-          "anchor": "Blog",
-          "href": "https://mintlify.com/blog",
-          "icon": "newspaper"
-        }
-      ]
-    }
-  },
-  "logo": {
-    "light": "/logo/light.svg",
-    "dark": "/logo/dark.svg"
-  },
-  "navbar": {
-    "links": [
-      {
-        "label": "Support",
-        "href": "mailto:hi@mintlify.com"
-      }
-    ],
-    "primary": {
-      "type": "button",
-      "label": "Dashboard",
-      "href": "https://dashboard.mintlify.com"
-    }
-  },
-  "contextual": {
-    "options": [
-     "copy",
-     "view",
-     "chatgpt",
-     "claude",
-     "perplexity",
-     "mcp",
-     "cursor",
-     "vscode"
-   ]
-  },
-  "footer": {
-    "socials": {
-      "x": "https://x.com/mintlify",
-      "github": "https://github.com/mintlify",
-      "linkedin": "https://linkedin.com/company/mintlify"
-    }
+    ]
   }
 }

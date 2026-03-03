@@ -1,0 +1,437 @@
+---
+title: Bump Version
+description: Automatically calculate and bump semantic versions with git-cliff
+---
+
+git-cliff can automatically calculate the next semantic version based on your conventional commits and bump the version in your changelog.
+
+## Basic Usage
+
+To calculate and set the next semantic version for unreleased changes:
+
+```bash
+git cliff --bump
+```
+
+### How It Works
+
+For semantic versioning `<MAJOR>.<MINOR>.<PATCH>`, git-cliff analyzes conventional commits:
+
+- **`fix:`** commits → increment `PATCH` (e.g., 1.0.0 → 1.0.1)
+- **`feat:`** commits → increment `MINOR` (e.g., 1.0.0 → 1.1.0)
+- **Breaking changes** (commits with `!` or `BREAKING CHANGE:`) → increment `MAJOR` (e.g., 1.0.0 → 2.0.0)
+
+### Example
+
+If you have version `1.0.0` and committed:
+
+```bash
+git commit -m "feat: add user authentication"
+```
+
+Then run:
+
+```bash
+git cliff --bump --unreleased
+```
+
+This will generate a changelog for version `1.1.0`.
+
+## Getting the Version Number
+
+Print the calculated next version to stdout without generating a changelog:
+
+```bash
+git cliff --bumped-version
+```
+
+**Example output:**
+```bash
+$ git cliff --bumped-version
+1.2.0
+```
+
+This is useful for automation:
+
+```bash
+# Store version in variable
+VERSION=$(git cliff --bumped-version)
+
+# Use in scripts
+echo "Next version will be: $VERSION"
+
+# Tag the release
+git tag "v$VERSION"
+```
+
+### Extract Version from Context
+
+You can also extract the bumped version from the JSON context:
+
+```bash
+git cliff --unreleased --bump --context | jq -r '.[0].version'
+```
+
+This gives you access to additional metadata about the release.
+
+## Bump to Specific Version Type
+
+Override the automatic bump calculation by specifying the version component:
+
+```bash
+# Force major version bump
+git cliff --bump major
+
+# Force minor version bump
+git cliff --bump minor
+
+# Force patch version bump
+git cliff --bump patch
+```
+
+### When to Use Specific Bumps
+
+**Major bump:** When making incompatible API changes
+```bash
+git cliff --bump major --unreleased --tag 2.0.0
+```
+
+**Minor bump:** When adding functionality in a backward-compatible manner
+```bash
+git cliff --bump minor --unreleased
+```
+
+**Patch bump:** When making backward-compatible bug fixes
+```bash
+git cliff --bump patch --unreleased
+```
+
+## Complete Release Workflow
+
+Here's a complete workflow for creating a release with version bumping:
+
+```bash
+# 1. Calculate the next version
+VERSION=$(git cliff --bumped-version)
+echo "Next version: $VERSION"
+
+# 2. Generate changelog with the new version
+git cliff --bump --unreleased --tag "$VERSION" -o CHANGELOG.md
+
+# 3. Review the changelog
+cat CHANGELOG.md
+
+# 4. Commit the changelog
+git add CHANGELOG.md
+git commit -m "chore(release): update CHANGELOG for $VERSION"
+
+# 5. Create and push the tag
+git tag -a "$VERSION" -m "Release $VERSION"
+git push origin "$VERSION"
+```
+
+## Tag Prefixes and Suffixes
+
+git-cliff supports tag prefixes and pre-release identifiers:
+
+### Version with Prefix
+
+```bash
+# Current version: v1.0.0
+git cliff --bump
+# Result: v1.1.0 (prefix preserved)
+```
+
+### Pre-release Versions
+
+```bash
+# Current version: v1.0.0-beta.1
+git cliff --bump
+# Result: v1.0.0-beta.2
+
+# Current version: testing/v1.0.0-rc.1
+git cliff --bump
+# Result: testing/v1.0.0-rc.2
+```
+
+The tag prefix is automatically detected and preserved.
+
+## Zero-Based Versioning
+
+When working with versions like `0.x.y` or `0.0.x`, you may want to preserve the leading zero even for breaking changes.
+
+### Default Behavior
+
+```bash
+# Current version: 0.5.0
+# Breaking change committed
+git cliff --bump
+# Result: 1.0.0 (major bump to 1.x)
+```
+
+### Preserving Zero-Based Versions
+
+Configure custom bump rules in your `cliff.toml`:
+
+```toml
+[bump]
+# In 0.x.y, breaking changes bump minor instead of major
+initial_tag = "0.1.0"
+```
+
+With this configuration:
+
+```bash
+# Current version: 0.5.0
+# Breaking change committed
+git cliff --bump
+# Result: 0.6.0 (minor bump, stays in 0.x)
+```
+
+See [bump configuration](/configuration/bump) for more details.
+
+## Tag Pattern Matching
+
+The next version is validated against the `tag_pattern` regex in your configuration:
+
+```toml
+[git]
+tag_pattern = "v[0-9]+\\.[0-9]+\\.[0-9]+"
+```
+
+This ensures the bumped version follows your tagging convention.
+
+### Example with Custom Pattern
+
+```toml
+[git]
+# Only match release tags (not beta/rc)
+tag_pattern = "v[0-9]+\\.[0-9]+\\.[0-9]+$"
+```
+
+```bash
+git cliff --bump  # Only considers stable releases
+```
+
+## Version Bumping Examples
+
+### Patch Release (Bug Fixes)
+
+```bash
+# Commits since last release
+git log --oneline
+# abc123 fix: resolve memory leak
+# def456 fix: correct validation logic
+
+git cliff --bump
+# Result: 1.0.0 → 1.0.1
+```
+
+### Minor Release (New Features)
+
+```bash
+# Commits since last release
+git log --oneline
+# abc123 feat: add export functionality
+# def456 fix: improve error handling
+
+git cliff --bump
+# Result: 1.0.1 → 1.1.0
+```
+
+### Major Release (Breaking Changes)
+
+```bash
+# Commits since last release
+git log --oneline
+# abc123 feat!: redesign API endpoints
+# def456 feat: add authentication
+
+git cliff --bump
+# Result: 1.1.0 → 2.0.0
+```
+
+### Pre-release Workflow
+
+```bash
+# Create beta release
+git cliff --bump --unreleased --tag v2.0.0-beta.1
+
+# After testing, create RC
+git cliff --bump --unreleased --tag v2.0.0-rc.1
+
+# Final release
+git cliff --bump --unreleased --tag v2.0.0
+```
+
+## Combining with Other Options
+
+### Bump and Save to File
+
+```bash
+git cliff --bump --unreleased -o CHANGELOG.md
+```
+
+### Bump with Specific Range
+
+```bash
+git cliff --bump v1.0.0..HEAD
+```
+
+### Bump with Custom Template
+
+```bash
+git cliff --bump --body "## Version {{ version }}\n{{ commits }}"
+```
+
+### Bump and Prepend
+
+```bash
+git cliff --bump --unreleased --prepend CHANGELOG.md
+```
+
+## Practical Workflows
+
+### Automated Release Script
+
+```bash
+#!/bin/bash
+set -e
+
+# Calculate next version
+NEXT_VERSION=$(git cliff --bumped-version)
+
+if [ -z "$NEXT_VERSION" ]; then
+  echo "No changes to release"
+  exit 0
+fi
+
+echo "Releasing version $NEXT_VERSION"
+
+# Update changelog
+git cliff --bump --unreleased --tag "$NEXT_VERSION" -o CHANGELOG.md
+
+# Update version in package.json (if applicable)
+sed -i "s/\"version\": \".*\"/\"version\": \"$NEXT_VERSION\"/" package.json
+
+# Commit and tag
+git add CHANGELOG.md package.json
+git commit -m "chore(release): $NEXT_VERSION"
+git tag -a "$NEXT_VERSION" -m "Release $NEXT_VERSION"
+
+# Push
+git push origin main --tags
+
+echo "Released $NEXT_VERSION"
+```
+
+### CI/CD Integration
+
+```yaml
+# .github/workflows/release.yml
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      
+      - name: Install git-cliff
+        run: |
+          wget https://github.com/orhun/git-cliff/releases/download/v2.0.0/git-cliff-2.0.0-x86_64-unknown-linux-gnu.tar.gz
+          tar -xzf git-cliff-*.tar.gz
+          sudo mv git-cliff /usr/local/bin/
+      
+      - name: Calculate version
+        id: version
+        run: |
+          VERSION=$(git cliff --bumped-version)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+      
+      - name: Generate changelog
+        run: |
+          git cliff --bump --unreleased --tag "${{ steps.version.outputs.version }}" -o CHANGELOG.md
+      
+      - name: Create Release
+        uses: actions/create-release@v1
+        with:
+          tag_name: ${{ steps.version.outputs.version }}
+          release_name: Release ${{ steps.version.outputs.version }}
+          body_path: CHANGELOG.md
+```
+
+### Monorepo Package Release
+
+```bash
+# Bump version for specific package
+cd packages/api
+
+# Calculate version based on package commits
+VERSION=$(git cliff --bumped-version --include-path "packages/api/**/*")
+
+# Generate package changelog
+git cliff --bump \
+  --include-path "packages/api/**/*" \
+  --tag "api-v$VERSION" \
+  --unreleased \
+  -o CHANGELOG.md
+```
+
+## Troubleshooting
+
+### No Version Change
+
+If `--bumped-version` returns empty or the version doesn't change:
+
+```bash
+# Check if there are unreleased commits
+git cliff --unreleased
+
+# Verify commits follow conventional format
+git log --oneline
+
+# Check tag pattern configuration
+git cliff --verbose --bumped-version
+```
+
+### Wrong Version Calculated
+
+Verify your commit messages follow [Conventional Commits](https://www.conventionalcommits.org/):
+
+```bash
+# Good commit messages
+feat: add new feature
+fix: resolve bug
+feat!: breaking change
+
+# Bad commit messages (won't be detected)
+Add new feature
+Fixed bug
+```
+
+### Tag Prefix Not Preserved
+
+Ensure your `tag_pattern` matches your tag format:
+
+```toml
+[git]
+# For tags like v1.0.0
+tag_pattern = "v[0-9]+\\.[0-9]+\\.[0-9]+"
+
+# For tags like release-1.0.0
+tag_pattern = "release-[0-9]+\\.[0-9]+\\.[0-9]+"
+```
+
+## See Also
+
+- [Basic Usage](/usage/basic-usage) - Core git-cliff commands
+- [CLI Arguments](/usage/args) - Complete argument reference
+- [Bump Configuration](/configuration/bump) - Configure version bumping behavior
+- [Conventional Commits](https://www.conventionalcommits.org/) - Commit message convention

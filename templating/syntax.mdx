@@ -1,0 +1,285 @@
+---
+title: Template Syntax
+description: Tera syntax reference and custom filters for git-cliff
+---
+
+# Template Syntax
+
+git-cliff uses [Tera](https://keats.github.io/tera/) as its template engine. Tera has a syntax based on [Jinja2](http://jinja.pocoo.org/) and [Django](https://docs.djangoproject.com/en/3.1/topics/templates/) templates.
+
+## Delimiters
+
+Tera uses three types of delimiters that cannot be changed:
+
+- `{{` and `}}` for **expressions** (variables, function calls)
+- `{%` or `{%-` and `%}` or `-%}` for **statements** (control structures)
+- `{#` and `#}` for **comments**
+
+## Variables
+
+Use double curly braces to output variables:
+
+```jinja
+{{ version }}
+{{ commit.message }}
+{{ timestamp | date(format="%Y-%m-%d") }}
+```
+
+Access object properties with dot notation:
+
+```jinja
+{{ commit.author.name }}
+{{ commit.author.email }}
+{{ remote.github.owner }}
+```
+
+## Control Flow
+
+### Conditionals
+
+Use `if` statements to conditionally render content:
+
+```jinja
+{% if version %}
+    ## [{{ version }}] - {{ timestamp | date(format="%Y-%m-%d") }}
+{% else %}
+    ## [Unreleased]
+{% endif %}
+```
+
+Check for existence:
+
+```jinja
+{% if commit.scope %}
+    *({{ commit.scope }})* 
+{% endif %}
+```
+
+Complex conditions:
+
+```jinja
+{% if commit.breaking %}
+    [**breaking**] {{ commit.message }}
+{% elif commit.scope %}
+    ({{ commit.scope }}) {{ commit.message }}
+{% else %}
+    {{ commit.message }}
+{% endif %}
+```
+
+### Loops
+
+Iterate over arrays with `for` loops:
+
+```jinja
+{% for commit in commits %}
+    - {{ commit.message }}
+{% endfor %}
+```
+
+Group and iterate:
+
+```jinja
+{% for group, commits in commits | group_by(attribute="group") %}
+    ### {{ group | upper_first }}
+    {% for commit in commits %}
+        - {{ commit.message }}
+    {% endfor %}
+{% endfor %}
+```
+
+Nested grouping (group by type, then scope):
+
+```jinja
+{% for group, commits in commits | group_by(attribute="group") %}
+    ### {{ group | upper_first }}
+    {% for scope, scoped_commits in commits | group_by(attribute="scope") %}
+        #### {{ scope | upper_first }}
+        {% for commit in scoped_commits %}
+            - {{ commit.message }}
+        {% endfor %}
+    {% endfor %}
+{% endfor %}
+```
+
+### Whitespace Control
+
+Add `-` to remove whitespace:
+
+```jinja
+{%- if version -%}
+    Content without extra newlines
+{%- endif -%}
+```
+
+## Filters
+
+Filters transform values using the pipe `|` operator:
+
+```jinja
+{{ commit.message | upper_first }}
+{{ commit.id | truncate(length=7, end="") }}
+{{ version | trim_start_matches(pat="v") }}
+```
+
+Chain multiple filters:
+
+```jinja
+{{ group | striptags | trim | upper_first }}
+```
+
+### Built-in Tera Filters
+
+Commonly used Tera filters:
+
+| Filter | Description | Example |
+|--------|-------------|----------|
+| `upper` | Convert to uppercase | `\{\{ "hello" \| upper \}\}` → `HELLO` |
+| `lower` | Convert to lowercase | `\{\{ "HELLO" \| lower \}\}` → `hello` |
+| `trim` | Remove whitespace | `\{\{ "  text  " \| trim \}\}` → `text` |
+| `truncate` | Truncate string | `\{\{ "hello" \| truncate(length=3) \}\}` → `hel...` |
+| `split` | Split string | `\{\{ "a,b,c" \| split(pat=",") \}\}` → `[a, b, c]` |
+| `first` | Get first item | `\{\{ items \| first \}\}` |
+| `last` | Get last item | `\{\{ items \| last \}\}` |
+| `length` | Get length | `\{\{ items \| length \}\}` |
+| `date` | Format timestamp | `\{\{ timestamp \| date(format="%Y-%m-%d") \}\}` |
+| `default` | Default value | `\{\{ value \| default(value="N/A") \}\}` |
+
+See the [Tera documentation](https://keats.github.io/tera/docs/#built-ins) for all built-in filters.
+
+### Custom git-cliff Filters
+
+git-cliff provides custom filters for changelog generation:
+
+#### upper_first
+
+Converts the first character to uppercase:
+
+```jinja
+{{ "hello world" | upper_first }}
+```
+**Output:** `Hello world`
+
+#### find_regex
+
+Finds all occurrences of a regex pattern:
+
+```jinja
+{{ "hello world, hello universe" | find_regex(pat="hello") }}
+```
+**Output:** `[hello, hello]`
+
+#### replace_regex
+
+Replaces all occurrences matching a regex pattern:
+
+```jinja
+{{ "hello world" | replace_regex(from="o", to="a") }}
+```
+**Output:** `hella warld`
+
+#### split_regex
+
+Splits a string by a regex pattern:
+
+```jinja
+{{ "hello world, hello universe" | split_regex(pat=" ") }}
+```
+**Output:** `[hello, world,, hello, universe]`
+
+## Macros
+
+Macros are reusable template functions. Define them once and call them multiple times:
+
+### Defining Macros
+
+```jinja
+{%- macro remote_url() -%}
+  https://github.com/{{ remote.github.owner }}/{{ remote.github.repo }}
+{%- endmacro -%}
+```
+
+### Macros with Parameters
+
+```jinja
+{% macro print_commit(commit) -%}
+    - {% if commit.scope %}*({{ commit.scope }})* {% endif %}\
+        {% if commit.breaking %}[**breaking**] {% endif %}\
+        {{ commit.message | upper_first }} - \
+        ([{{ commit.id | truncate(length=7, end="") }}]({{ self::remote_url() }}/commit/{{ commit.id }}))
+{% endmacro -%}
+```
+
+### Calling Macros
+
+```jinja
+{% for commit in commits %}
+    {{ self::print_commit(commit=commit) }}
+{% endfor %}
+```
+
+## Real-World Example
+
+Here's a complete template from `cliff.toml`:
+
+```toml
+body = """
+{%- macro remote_url() -%}
+  https://github.com/{{ remote.github.owner }}/{{ remote.github.repo }}
+{%- endmacro -%}
+
+{% macro print_commit(commit) -%}
+    - {% if commit.scope %}*({{ commit.scope }})* {% endif %}\
+        {% if commit.breaking %}[**breaking**] {% endif %}\
+        {{ commit.message | upper_first }} - \
+        ([{{ commit.id | truncate(length=7, end="") }}]({{ self::remote_url() }}/commit/{{ commit.id }}))
+{% endmacro -%}
+
+{% if version %}\
+    {% if previous.version %}\
+        ## [{{ version | trim_start_matches(pat="v") }}]\
+          ({{ self::remote_url() }}/compare/{{ previous.version }}..{{ version }}) - {{ timestamp | date(format="%Y-%m-%d") }}
+    {% else %}\
+        ## [{{ version | trim_start_matches(pat="v") }}] - {{ timestamp | date(format="%Y-%m-%d") }}
+    {% endif %}\
+{% else %}\
+    ## [unreleased]
+{% endif %}\
+
+{% for group, commits in commits | group_by(attribute="group") %}
+    ### {{ group | striptags | trim | upper_first }}
+    {% for commit in commits
+    | filter(attribute="scope")
+    | sort(attribute="scope") %}
+        {{ self::print_commit(commit=commit) }}
+    {%- endfor %}
+    {% for commit in commits %}
+        {%- if not commit.scope -%}
+            {{ self::print_commit(commit=commit) }}
+        {% endif -%}
+    {% endfor -%}
+{% endfor -%}
+"""
+```
+
+**This template:**
+- Defines a `remote_url()` macro for GitHub URLs
+- Defines a `print_commit()` macro for formatting commit entries
+- Conditionally renders version header with comparison links
+- Groups commits by type (Features, Bug Fixes, etc.)
+- Sorts scoped commits within each group
+- Formats commits with scope, breaking change indicators, and links
+
+## Comments
+
+Add comments that won't appear in output:
+
+```jinja
+{# This is a comment and won't be rendered #}
+{{ commit.message }} {# inline comment #}
+```
+
+## Next Steps
+
+- [Context](/templating/context) - Learn about available template variables
+- [Examples](/templating/examples) - Explore complete template configurations

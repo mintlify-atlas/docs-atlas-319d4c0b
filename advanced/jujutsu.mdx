@@ -1,0 +1,204 @@
+---
+title: Jujutsu Integration
+description: Using git-cliff with Jujutsu VCS
+---
+
+Learn how to use git-cliff with repositories managed by [Jujutsu](https://jj-vcs.github.io/jj/latest/), a modern version control system.
+
+## What is Jujutsu?
+
+Jujutsu (jj) is a Git-compatible version control system that provides a simpler and more powerful interface than Git. Since it maintains compatibility with Git repositories, you can use git-cliff to generate changelogs from Jujutsu-managed repositories.
+
+## Colocated repositories
+
+If you cloned your repository using Jujutsu with the `--colocate` option, git-cliff works out of the box with minimal configuration.
+
+### Setup
+
+The `--colocate` option creates both `.git` and `.jj` directories, allowing both Git and Jujutsu to operate on the same repository:
+
+```bash
+jj git clone --colocate https://github.com/user/repo
+cd repo
+```
+
+### Running git-cliff
+
+Make sure you have checked out your mainline branch using Git:
+
+```bash
+git checkout main
+git-cliff -o CHANGELOG.md
+```
+
+<Warning>
+If you don't check out a Git branch, you may see an error about an unborn branch. This is because git-cliff needs a valid Git HEAD reference.
+</Warning>
+
+## Non-colocated repositories
+
+When you clone a repository with Jujutsu without the `--colocate` option, the Git repository is stored in `.jj/repo/store/git` instead of the standard `.git` directory.
+
+### Configuration steps
+
+1. **Clone the repository:**
+
+```bash
+jj git clone https://github.com/user/repo
+cd repo
+```
+
+2. **Create a `.git` file pointing to the Jujutsu Git store:**
+
+```bash
+echo "gitdir: .jj/repo/store/git" > .git
+```
+
+3. **Update HEAD to point to your main remote branch:**
+
+```bash
+echo "ref: refs/remotes/origin/main" > .jj/repo/store/git/HEAD
+```
+
+<Note>
+Replace `main` with the name of your main remote branch if it's different (e.g., `master`, `trunk`, `develop`).
+</Note>
+
+4. **Run git-cliff:**
+
+```bash
+git-cliff -o CHANGELOG.md
+```
+
+### Complete example
+
+Here's a complete workflow for using git-cliff with a non-colocated Jujutsu repository:
+
+```bash
+# Clone repository
+jj git clone https://github.com/orhun/menyoki
+cd menyoki
+
+# Configure Git directory
+echo "gitdir: .jj/repo/store/git" > .git
+echo "ref: refs/remotes/origin/master" > .jj/repo/store/git/HEAD
+
+# Generate changelog
+git-cliff --latest -o CHANGELOG.md
+
+# Or generate for a specific range
+git-cliff v1.0.0..HEAD -o CHANGELOG.md
+```
+
+## Workflow integration
+
+### Automated changelog generation
+
+Add a script to automate the setup and changelog generation:
+
+**`scripts/generate-changelog.sh`:**
+
+```bash
+#!/bin/bash
+set -e
+
+# Ensure .git file exists for non-colocated repos
+if [ -d ".jj/repo/store/git" ] && [ ! -e ".git" ]; then
+    echo "gitdir: .jj/repo/store/git" > .git
+    
+    # Detect main branch (try common names)
+    for branch in main master trunk develop; do
+        if git ls-remote --heads origin $branch | grep -q $branch; then
+            echo "ref: refs/remotes/origin/$branch" > .jj/repo/store/git/HEAD
+            break
+        fi
+    done
+fi
+
+# Generate changelog
+git-cliff "$@"
+```
+
+Make it executable and use it:
+
+```bash
+chmod +x scripts/generate-changelog.sh
+./scripts/generate-changelog.sh -o CHANGELOG.md
+```
+
+### Pre-release workflow
+
+Combine Jujutsu's powerful commit management with git-cliff:
+
+```bash
+# Use Jujutsu to refine commits
+jj squash
+jj describe -m "feat: add new feature"
+
+# Export to Git
+jj git export
+
+# Generate changelog for unreleased changes
+git-cliff --unreleased --tag v1.2.0 -o CHANGELOG.md
+
+# Review and create release
+cat CHANGELOG.md
+jj git push
+```
+
+## Troubleshooting
+
+### Error: "unborn branch"
+
+**Problem:** git-cliff reports an error about an unborn branch.
+
+**Solution:** Ensure HEAD points to a valid branch:
+
+```bash
+# For colocated repos
+git checkout main
+
+# For non-colocated repos
+echo "ref: refs/remotes/origin/main" > .jj/repo/store/git/HEAD
+```
+
+### Error: "not a git repository"
+
+**Problem:** git-cliff cannot find the Git repository.
+
+**Solution:** Create the `.git` file pointing to Jujutsu's Git store:
+
+```bash
+echo "gitdir: .jj/repo/store/git" > .git
+```
+
+### Missing commits
+
+**Problem:** Recent Jujutsu commits don't appear in the changelog.
+
+**Solution:** Export Jujutsu commits to Git:
+
+```bash
+jj git export
+git-cliff -o CHANGELOG.md
+```
+
+## Best practices
+
+1. **Always export before generating:** Run `jj git export` before generating changelogs to ensure all Jujutsu commits are available to git-cliff.
+
+2. **Automate setup:** Use a script to automatically configure the `.git` file and HEAD reference for non-colocated repositories.
+
+3. **Use conventional commits:** Jujutsu makes it easy to edit commit messages. Take advantage of this to ensure they follow conventional commit format:
+
+```bash
+jj describe -m "feat(api): add new endpoint"
+```
+
+4. **Leverage Jujutsu's history editing:** Before generating a changelog, use Jujutsu's powerful history editing features to clean up commits:
+
+```bash
+jj squash    # Combine commits
+jj split     # Split commits
+jj describe  # Edit commit messages
+```

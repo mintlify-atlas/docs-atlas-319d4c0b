@@ -1,0 +1,385 @@
+---
+title: Basic Usage
+description: Core commands and common usage patterns for git-cliff
+---
+
+This guide covers the fundamental commands and patterns for using git-cliff.
+
+## Generating a Changelog
+
+### Default Behavior
+
+To generate a changelog in the current repository:
+
+```bash
+git cliff
+```
+
+This command:
+- Reads configuration from `cliff.toml` in the current directory
+- Processes all commits in the repository
+- Outputs the changelog to stdout
+
+### Saving to a File
+
+Save the changelog to `CHANGELOG.md`:
+
+```bash
+# Use default filename (CHANGELOG.md)
+git cliff -o
+
+# Specify custom output file
+git cliff --output HISTORY.md
+```
+
+### Updating an Existing Changelog
+
+Prepend new changes to an existing changelog file:
+
+```bash
+git cliff --unreleased --tag 1.0.0 --prepend CHANGELOG.md
+```
+
+<Note>
+The `--prepend` option:
+1. Removes the changelog header from the existing file
+2. Prepends new entries without the footer
+3. Cannot be used with `-o` if the file paths are equal
+</Note>
+
+## Filtering by Release
+
+### Latest Release
+
+Generate changelog for only the latest tag:
+
+```bash
+git cliff --latest
+```
+
+**Example output:**
+```
+## [1.2.0] - 2024-03-15
+
+### Features
+- Add new authentication system
+- Implement API rate limiting
+
+### Bug Fixes
+- Fix memory leak in parser
+```
+
+### Current Tag
+
+Generate changelog for the current tag (requires HEAD to be on a tagged commit):
+
+```bash
+git checkout v1.0.0
+git cliff --current
+```
+
+### Unreleased Changes
+
+Generate changelog for commits that don't belong to any tag:
+
+```bash
+# Show unreleased changes
+git cliff --unreleased
+
+# Show unreleased changes with a future tag
+git cliff --unreleased --tag 2.0.0
+```
+
+**Example output:**
+```bash
+$ git cliff --unreleased --tag v1.3.0
+
+## [1.3.0] - 2024-03-20
+
+### Features
+- Add webhook support
+
+### Bug Fixes
+- Fix CORS headers
+```
+
+## Commit Range Specifications
+
+git-cliff supports [Git range syntax](https://git-scm.com/docs/git-range-diff) for specifying commit ranges.
+
+### Specific Commit Range
+
+```bash
+# Between two commits
+git cliff 4c7b043..a440c6e
+
+# From commit to HEAD
+git cliff 4c7b043..HEAD
+
+# Last 2 commits
+git cliff HEAD~2..
+```
+
+### Tag Ranges
+
+```bash
+# Between two tags
+git cliff v1.0.0..v2.0.0
+
+# From tag to HEAD
+git cliff v2.2.1..
+```
+
+**Example:**
+```bash
+$ git cliff v1.0.0..v1.1.0
+
+## [1.1.0] - 2024-02-01
+
+### Features
+- feat: add user profiles (#42)
+- feat: implement dark mode (#45)
+
+### Bug Fixes
+- fix: resolve database connection timeout (#44)
+```
+
+## Output Formats
+
+### Standard Markdown
+
+Default output format:
+
+```bash
+git cliff --unreleased
+```
+
+### JSON Context
+
+Export changelog data as JSON for further processing:
+
+```bash
+git cliff --context
+```
+
+**Example output:**
+```json
+[
+  {
+    "version": "1.0.0",
+    "commits": [
+      {
+        "id": "abc123",
+        "message": "feat: add new feature",
+        "group": "Features"
+      }
+    ]
+  }
+]
+```
+
+### Custom Template
+
+Use a custom template inline:
+
+```bash
+git cliff --body "{% for commit in commits %}{{ commit.message }}\n{% endfor %}"
+```
+
+## Sorting and Ordering
+
+### Sort Commits
+
+Control the order of commits within sections:
+
+```bash
+# Oldest commits first (default)
+git cliff --sort oldest
+
+# Newest commits first
+git cliff --sort newest
+```
+
+### Topological Order
+
+Process tags in topological order instead of chronological:
+
+```bash
+git cliff --topo-order
+```
+
+This is useful when working with merge commits and complex branching strategies.
+
+## Branch-Specific Tags
+
+Include only tags from the current branch:
+
+```bash
+git cliff --use-branch-tags
+```
+
+This is helpful in repositories with multiple release branches:
+
+```bash
+# On release/v2.x branch
+git checkout release/v2.x
+git cliff --use-branch-tags
+```
+
+## Stripping Changelog Parts
+
+Remove specific sections from the output:
+
+```bash
+# Remove header
+git cliff --strip header
+
+# Remove footer
+git cliff --strip footer
+
+# Remove both
+git cliff --strip all
+```
+
+**Example:**
+```bash
+# Generate without header and footer for embedding
+git cliff --strip all --latest
+```
+
+## Setting Tags
+
+Set a tag for unreleased changes without creating the Git tag:
+
+```bash
+# Generate changelog as if v1.0.0 exists
+git cliff --tag v1.0.0
+
+# Combine with unreleased
+git cliff --unreleased --tag v1.0.0
+```
+
+<Note>
+The `--tag` flag only affects changelog generation. It does not create an actual Git tag. Use `git tag` to create the tag after generating the changelog.
+</Note>
+
+## Working Directory and Repository
+
+### Specify Working Directory
+
+```bash
+git cliff --workdir /path/to/repo
+```
+
+### Specify Repository Path
+
+```bash
+git cliff --repository /path/to/repo
+
+# Multiple repositories
+git cliff --repository /path/to/repo1 /path/to/repo2
+```
+
+## Verbosity and Debugging
+
+Increase logging output:
+
+```bash
+# Verbose output
+git cliff -v
+
+# More verbose
+git cliff -vv
+
+# Maximum verbosity
+git cliff -vvv
+```
+
+## Disabling External Commands
+
+Skip execution of preprocessors and postprocessors:
+
+```bash
+git cliff --no-exec
+```
+
+This is useful for:
+- Faster execution during testing
+- Security when running in untrusted environments
+- Debugging template issues
+
+## Practical Examples
+
+### Release Workflow
+
+```bash
+# 1. Generate changelog for unreleased changes
+git cliff --unreleased --tag v1.2.0 -o CHANGELOG.md
+
+# 2. Review the changelog
+cat CHANGELOG.md
+
+# 3. Create the Git tag
+git tag v1.2.0
+
+# 4. Push changes
+git push origin v1.2.0
+```
+
+### Hotfix Release
+
+```bash
+# Generate changelog for just the hotfix
+git cliff v1.1.0..HEAD --tag v1.1.1 -o CHANGELOG.md
+```
+
+### Preview Before Saving
+
+```bash
+# Preview to stdout first
+git cliff --unreleased --tag v2.0.0
+
+# If satisfied, save to file
+git cliff --unreleased --tag v2.0.0 -o CHANGELOG.md
+```
+
+## Common Patterns
+
+### Complete Changelog Regeneration
+
+```bash
+# Remove old changelog
+rm CHANGELOG.md
+
+# Generate fresh changelog
+git cliff -o CHANGELOG.md
+```
+
+### Multiple Output Formats
+
+```bash
+# Save markdown
+git cliff -o CHANGELOG.md
+
+# Export JSON for tooling
+git cliff --context > changelog.json
+```
+
+### Conditional Tag Creation
+
+```bash
+# Get bumped version
+VERSION=$(git cliff --bumped-version)
+
+# Generate changelog with that version
+git cliff --unreleased --tag "$VERSION" -o CHANGELOG.md
+
+# Create tag
+git tag "$VERSION"
+```
+
+## Next Steps
+
+- Explore the complete [CLI Arguments reference](/usage/args)
+- Learn about [Version Bumping](/usage/bump-version)
+- Configure [Custom Templates](/templating/overview)
